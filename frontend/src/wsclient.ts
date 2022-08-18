@@ -1,26 +1,53 @@
-export type EventHandler = (data: any) => void;
+import { generateId } from './utils';
+
+import Joi from 'joi';
+
+interface Event {
+	type: string;
+	to?: string;
+	data?: object;
+}
+
+export interface Payload {
+	event: Event;
+	messageId?: string;
+}
+
+const payloadSchema = Joi.object({
+	event: {
+		type: Joi.string().required(),
+		to: Joi.string(),
+		data: Joi.object(),
+	},
+	messageId: Joi.string(),
+});
+
+export type EventHandler = (payload: any) => void;
+export type ResponseHandler = (payload: any) => void;
 
 const WEBSOCKET_URL = `ws://${window.location.host}/ws`;
 
+type Credentials = {
+	username: string;
+	token: string;
+	id: string;
+};
+
 class Client {
 	private socket?: WebSocket;
-	private username: string;
-	private token: string;
-	private playerId: string;
+	private credentials: Credentials;
 
-	private handlers: Map<string, EventHandler>;
+	private eventHandlers: Map<string, EventHandler>;
+	private responseHandlers: Map<string, ResponseHandler>;
 
 	public constructor() {
-		this.username = '';
-		this.token = '';
-		this.playerId = '';
-		this.handlers = new Map<string, EventHandler>();
+		this.credentials = { username: '', token: '', id: '' };
+		this.eventHandlers = new Map<string, EventHandler>();
+		this.responseHandlers = new Map<string, ResponseHandler>();
 	}
 
 	public connect(username: string, playerId: string, token: string) {
-		this.username = username;
-		this.playerId = playerId;
-		this.token = token;
+		this.credentials = { username, id: playerId, token };
 
 		this.socket = new WebSocket(WEBSOCKET_URL);
 
@@ -45,36 +72,56 @@ class Client {
 	}
 
 	public joinRoom(roomId: string) {
-		this.emmitEvent('join', { roomId });
+		this.sendEvent({ type: 'join', data: { roomId } });
 	}
 
 	public startRoom(roomId: string) {
-		this.emmitEvent('start', { roomId });
+		this.sendEvent({ type: 'start', data: { roomId } });
 	}
 
-	public emmitEvent(eventName: string, data: any) {
+	public sendEvent(event: Event, handler?: ResponseHandler) {
 		if (this.socket === undefined) throw new Error('websocket is not connected');
 
-		const payload = {
-			username: this.username,
-			id: this.playerId,
-			token: this.token,
-			event: {
-				type: eventName,
-				data,
-			},
-		};
+		let payload;
+
+		if (event.type === 'response') {
+			payload = {
+				event,
+			};
+		} else {
+			const messageId = generateId();
+			payload = {
+				messageId,
+				credentials: this.credentials,
+				event,
+			};
+
+			if (handler !== undefined) this.onResponse(messageId, handler);
+		}
 
 		this.socket.send(JSON.stringify(payload));
 	}
 
 	public on(eventName: string, handler: EventHandler) {
-		const handlerAlreadyExist = this.handlers.has(eventName);
+		const handlerAlreadyExist = this.eventHandlers.has(eventName);
 		if (handlerAlreadyExist) {
 			throw new Error('this event already has an handler');
 		}
 
-		this.handlers.set(eventName, handler);
+		this.eventHandlers.set(eventName, handler);
+	}
+
+	public onResponse(responseId: string, handler: ResponseHandler) {
+		const handlerAlreadyExist = this.responseHandlers.has(responseId);
+		if (handlerAlreadyExist) {
+			throw new Error('this event already has an handler');
+		}
+
+		this.responseHandlers.set(responseId, handler);
+
+		setTimeout(() => {
+			this.responseHandlers.delete(responseId);
+		}, 5000);
 	}
 
 	private setupHandlers() {
@@ -85,13 +132,34 @@ class Client {
 
 	private setupMessageHandler() {
 		this.socket!.addEventListener('message', (e) => {
-			const payload = JSON.parse(e.data);
+			const rawPayload = JSON.parse(e.data);
 
-			if (payload.type === undefined) throw new Error(`the payload ${e.data} could not be parsed`);
+			const value = payloadSchema.validate(rawPayload);
+			if (value.error !== undefined) {
+				throw new Error(value.error.message);
+			}
 
-			const handler = this.handlers.get(payload.type);
+			const payload = <Payload>rawPayload;
+
+			let handler;
+
+			if (payload.event.type === 'response') {
+				if (payload.event.to === undefined) {
+					throw new Error('"to" field is required on a response event');
+				}
+
+				handler = this.responseHandlers.get(payload.event.to!);
+				this.responseHandlers.delete(payload.event.to!);
+			} else {
+				if (payload.messageId === undefined) {
+					throw new Error('"messageId" field is required');
+				}
+
+				handler = this.eventHandlers.get(payload.event.type);
+			}
+
 			if (handler !== undefined) {
-				handler(payload.data);
+				handler(payload);
 			}
 		});
 	}

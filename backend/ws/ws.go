@@ -62,7 +62,7 @@ func (p *Payload) unmarshalFrom(msg []byte) error {
 
 	if p.Event.Type == "response" {
 		if len(p.Event.To) == 0 {
-			return fmt.Errorf("\"to field is required on a response event")
+			return fmt.Errorf("\"to\" field is required on a response event")
 		}
 	} else {
 		if p.Credentials == nil {
