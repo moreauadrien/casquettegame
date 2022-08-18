@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"strings"
 
 	"timesup/game"
 	"timesup/ws"
-	"timesup/ws/client"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +29,15 @@ func loadCards() []string {
 var players = map[string]game.Player{}
 
 func main() {
+	logFileName := fmt.Sprintf("%s.%s", "./logs/", "%Y-%m-%d.%H:%M:%S")
+	f, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	wrt := io.MultiWriter(os.Stdout, f)
+	log.SetOutput(wrt)
+	log.Println(" Orders API Called")
 
 	cards := loadCards()
 	fmt.Println(cards)
@@ -42,13 +52,12 @@ func main() {
 		c.File("./static/app.html")
 	})
 
-	/*router.GET("/ws", func(c *gin.Context) {
-		wshandler(c.Writer, c.Request)
-	})*/
-
 	router.GET("/ws", gin.WrapF(ws.Wrapper.HttpHandler))
 
-	ws.Wrapper.On("test", func(c client.Client, p *ws.Payload) {
+	ws.Wrapper.On("test", func(c ws.Client, p *ws.Payload) {
+		fmt.Println("test")
+
+		c.SendEvent(game.Event{Type: "myevent"}, nil)
 	})
 
 	router.POST("/api/createRoom", game.HandleRoomCreation)

@@ -8,3 +8,4 @@
 /frontend/!.env.example
 /backend/static
 /build
+/backend/timesup

@@ -3,20 +3,21 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"timesup/ws/client"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
+	"log"
+	"net/http"
+	"time"
 )
 
-var Wrapper = wrapper{map[string]EventHandler{}}
+var Wrapper = wrapper{eventHandlers: map[string]EventHandler{}, responseHandlers: map[string]ResponseHandler{}}
 
-type EventHandler func(client.Client, *Payload)
+type EventHandler func(Client, *Payload)
+type ResponseHandler func(Client, *Payload)
 
 type wrapper struct {
-	eventHandlers map[string]EventHandler
+	eventHandlers    map[string]EventHandler
+	responseHandlers map[string]ResponseHandler
 }
 
 var upgrader = websocket.Upgrader{
@@ -89,7 +90,20 @@ func (wr *wrapper) On(eventName string, handler EventHandler) {
 	log.Printf("\"%v\" handler registered", eventName)
 }
 
-func (wr *wrapper) handleIncomingMessage(c client.Client, msgType int, msg []byte) {
+func (wr *wrapper) OnResponse(responseId string, handler ResponseHandler) {
+	if _, exist := wr.responseHandlers[responseId]; exist {
+		panic(fmt.Errorf("message \"%v\" already has a handler ", responseId))
+	}
+
+	wr.responseHandlers[responseId] = handler
+
+	go func() {
+		time.Sleep(5 * time.Second)
+		delete(wr.responseHandlers, responseId)
+	}()
+}
+
+func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 	if msgType != websocket.TextMessage {
 		log.Printf("message type %v is not supported", msgType)
 		return
@@ -103,6 +117,12 @@ func (wr *wrapper) handleIncomingMessage(c client.Client, msgType int, msg []byt
 
 	eventType := p.Event.Type
 	if eventType == "response" {
+		handler := wr.responseHandlers[p.Event.To]
+
+		if handler != nil {
+			handler(c, p)
+			delete(wr.responseHandlers, p.Event.To)
+		}
 	} else {
 		handler := wr.eventHandlers[eventType]
 
@@ -126,6 +146,6 @@ func (wr *wrapper) HttpHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		wr.handleIncomingMessage(client.New(conn), t, msg)
+		wr.handleIncomingMessage(New(conn, *wr), t, msg)
 	}
 }
