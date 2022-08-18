@@ -11,6 +11,7 @@ import (
 	"timesup/ws"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func check(e error) {
@@ -29,13 +30,14 @@ func loadCards() []string {
 var players = map[string]game.Player{}
 
 func main() {
-	logFileName := fmt.Sprintf("%s.%s", "./logs/", "%Y-%m-%d.%H:%M:%S")
-	f, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-	wrt := io.MultiWriter(os.Stdout, f)
+	wrt := io.MultiWriter(os.Stdout, &lumberjack.Logger{
+		Filename:   "./logs/timesup.log",
+		MaxSize:    500,
+		MaxBackups: 3,
+		MaxAge:     29,
+		Compress:   false,
+	})
+
 	log.SetOutput(wrt)
 	log.Println(" Orders API Called")
 
