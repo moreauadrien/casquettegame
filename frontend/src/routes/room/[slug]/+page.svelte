@@ -8,7 +8,7 @@
 	import { client } from '@/wsclient';
 	import UsernameSelect from '@/views/UsernameSelect.svelte';
 	import QrCodeView from '@/views/QrCodeView.svelte';
-    import PlayerListView from '@/views/PlayerListView.svelte';
+	import PlayerListView from '@/views/PlayerListView.svelte';
 
 	const roomId = $page.params.slug;
 
@@ -17,7 +17,7 @@
 		PlayerList,
 	}
 
-	let currentView = View.PlayerList;
+	let currentView = View.QRCode;
 
 	onMount(() => {
 		if ($username.length === 0) return;
@@ -25,15 +25,15 @@
 		joinRoom();
 	});
 
-    $: {
-        if ($playerId !== $host && currentView === View.QRCode) {
-            currentView = View.PlayerList
-        }
-    }
+	$: {
+		if ($playerId !== $host && currentView === View.QRCode) {
+			currentView = View.PlayerList;
+		}
+	}
 
 	async function joinRoom() {
 		try {
-			await client.connect($username, $playerId ,$token);
+			await client.connect($username, $playerId, $token);
 
 			client.joinRoom(roomId);
 		} catch (e) {
@@ -46,15 +46,15 @@
 		currentView = View.PlayerList;
 	}
 
-    function startGame() {
-        console.log('start game')
-    }
+	function startGame() {
+		console.log('start game');
+	}
 
-    function handleBack() {
-        if (currentView !== View.PlayerList || $playerId !== $host) return
+	function handleBack() {
+		if (currentView !== View.PlayerList || $playerId !== $host) return;
 
-        currentView = View.QRCode
-    }
+		currentView = View.QRCode;
+	}
 </script>
 
 {#if $username.length === 0}
@@ -66,7 +66,7 @@
 		title="Rejoins une partie"
 	/>
 {:else if currentView === View.QRCode}
-    <QrCodeView on:next={nextClick}/>
+	<QrCodeView on:next={nextClick} />
 {:else if currentView === View.PlayerList}
-    <PlayerListView on:back={handleBack} on:startGame={startGame} isHost={$playerId === $host}/>
+	<PlayerListView on:back={handleBack} on:startGame={startGame} isHost={$playerId === $host} />
 {/if}

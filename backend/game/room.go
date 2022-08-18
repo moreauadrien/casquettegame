@@ -21,6 +21,7 @@ type Room struct {
 	numberOfTeams int
 	state         int
 	teams         [2]*Team
+	speaker       *Player
 }
 
 func (r *Room) getSmallestTeam() *Team {
@@ -70,7 +71,17 @@ func (r *Room) StartGame() error {
 		return fmt.Errorf(ALREADY_LAUNCHED_ERROR)
 	}
 
+	r.speaker = r.teams[0].players[0]
+
 	r.state = InGame
+
+	startEvent := StartEvent{
+		Players: r.Players(),
+		Host:    r.host.Id,
+		Speaker: r.speaker.Infos(),
+	}
+
+	r.BrodcastEvent(startEvent.Wrap())
 
 	return nil
 }

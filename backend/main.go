@@ -5,8 +5,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"timesup/game"
+	"timesup/ws"
+	"timesup/ws/client"
+
+	"github.com/gin-gonic/gin"
 )
 
 func check(e error) {
@@ -39,8 +42,13 @@ func main() {
 		c.File("./static/app.html")
 	})
 
-	router.GET("/ws", func(c *gin.Context) {
+	/*router.GET("/ws", func(c *gin.Context) {
 		wshandler(c.Writer, c.Request)
+	})*/
+
+	router.GET("/ws", gin.WrapF(ws.Wrapper.HttpHandler))
+
+	ws.Wrapper.On("test", func(c client.Client, p *ws.Payload) {
 	})
 
 	router.POST("/api/createRoom", game.HandleRoomCreation)

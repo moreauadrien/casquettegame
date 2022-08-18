@@ -43,3 +43,16 @@ func (e InfosEvent) Wrap() Event {
 		Data: e,
 	}
 }
+
+type StartEvent struct {
+	Players []PlayerInfos `json:"players"`
+	Host    string        `json:"host"`
+	Speaker PlayerInfos   `json:"speaker"`
+}
+
+func (e StartEvent) Wrap() Event {
+	return Event{
+		Type: "start",
+		Data: e,
+	}
+}

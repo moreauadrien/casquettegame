@@ -48,6 +48,10 @@ class Client {
 		this.emmitEvent('join', { roomId });
 	}
 
+	public startRoom(roomId: string) {
+		this.emmitEvent('start', { roomId });
+	}
+
 	public emmitEvent(eventName: string, data: any) {
 		if (this.socket === undefined) throw new Error('websocket is not connected');
 

@@ -99,6 +99,7 @@ func handlePayload(p Payload, conn *websocket.Conn) {
 		}
 
 		if r.State() != game.WaitingRoom {
+			conn.WriteMessage(websocket.TextMessage, []byte(buildErrorPayload("this game has already started").Error()))
 			return
 		}
 

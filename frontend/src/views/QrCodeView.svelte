@@ -3,11 +3,11 @@
 	import QrCode from '@/components/QrCode.svelte';
 	import { createEventDispatcher } from 'svelte';
 
-    const dispatch = createEventDispatcher<{next: undefined}>();
+	const dispatch = createEventDispatcher<{ next: undefined }>();
 
-    function handleClick() {
-        dispatch('next')
-    }
+	function handleClick() {
+		dispatch('next');
+	}
 </script>
 
 <div class="flex flex-col justify-center">
@@ -17,7 +17,7 @@
 
 	<p class="mt-12 text-center font-inter font-medium text-xl">Scan le QR code</p>
 	<div class="flex justify-center">
-        <QrCode data={window.location.href} size={250} />
+		<QrCode data={window.location.href} size={250} />
 	</div>
 
 	<div class="flex justify-center absolute bottom-28 w-full">

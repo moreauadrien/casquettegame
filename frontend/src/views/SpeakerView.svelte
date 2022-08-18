@@ -10,11 +10,9 @@
 
 	let team = Team.BLUE;
 
-    function validateCard() {
-    }
+	function validateCard() {}
 
-    function passCard() {
-    }
+	function passCard() {}
 </script>
 
 <div class="flex flex-col justify-center">

@@ -1,6 +1,6 @@
 <script lang="ts">
 	export let isHost: boolean;
-import BackButton from '@/components/BackButton.svelte';
+	import BackButton from '@/components/BackButton.svelte';
 	import Button from '@/components/Button.svelte';
 	import PlayerTag from '@/components/PlayerTag.svelte';
 
@@ -9,19 +9,19 @@ import BackButton from '@/components/BackButton.svelte';
 
 	const dispatch = createEventDispatcher();
 
-    function startGame() {
-        dispatch('startGame')
-    }
+	function startGame() {
+		dispatch('startGame');
+	}
 
-    function back() {
-        dispatch('back')
-    }
+	function back() {
+		dispatch('back');
+	}
 </script>
 
 {#if isHost}
-    <div class="absolute left-8 top-8">
-        <BackButton on:click={back}/>
-    </div>
+	<div class="absolute left-8 top-8">
+		<BackButton on:click={back} />
+	</div>
 {/if}
 
 <div class="flex flex-col justify-center">
