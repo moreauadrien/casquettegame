@@ -37,9 +37,7 @@ func main() {
 		MaxAge:     29,
 		Compress:   false,
 	})
-
 	log.SetOutput(wrt)
-	log.Println(" Orders API Called")
 
 	cards := loadCards()
 	fmt.Println(cards)
@@ -55,12 +53,6 @@ func main() {
 	})
 
 	router.GET("/ws", gin.WrapF(ws.Wrapper.HttpHandler))
-
-	ws.Wrapper.On("test", func(c ws.Client, p *ws.Payload) {
-		fmt.Println("test")
-
-		c.SendEvent(game.Event{Type: "myevent"}, nil)
-	})
 
 	router.POST("/api/createRoom", game.HandleRoomCreation)
 

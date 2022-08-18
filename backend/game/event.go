@@ -8,7 +8,7 @@ type EventData interface {
 
 type Event struct {
 	Type string    `json:"type"`
-	Data EventData `json:"data"`
+	Data EventData `json:"data,omitempty"`
 }
 
 func (e Event) Marshal() []byte {

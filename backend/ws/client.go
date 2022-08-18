@@ -30,7 +30,33 @@ func newMessage(event game.Event) Message {
 	}
 }
 
+type ResponseEvent struct {
+	Type string         `json:"type"`
+	To   string         `json:"to"`
+	Data game.EventData `json:"data,omitempty"`
+}
+
 type Response struct {
+	Event ResponseEvent `json:"event"`
+}
+
+func (r Response) Marshal() []byte {
+	b, err := json.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+
+	return b
+}
+
+func newResponse(to string, data game.EventData) Response {
+	return Response{
+		Event: ResponseEvent{
+			Type: "response",
+			To:   to,
+			Data: data,
+		},
+	}
 }
 
 type Client struct {
@@ -56,4 +82,13 @@ func (c *Client) SendEvent(event game.Event, handler ResponseHandler) {
 	}
 
 	c.wrapper.OnResponse(m.MessageId, handler)
+}
+
+func (c *Client) SendResponse(to string, data game.EventData) {
+	resp := newResponse(to, data)
+
+	if err := c.conn.WriteMessage(websocket.TextMessage, resp.Marshal()); err != nil {
+		log.Printf("the response to %v could not be sent", to)
+		return
+	}
 }
