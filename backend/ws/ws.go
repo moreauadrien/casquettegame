@@ -6,15 +6,16 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"timesup/events"
+	"timesup/payloads"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
 )
 
 var Wrapper = wrapper{eventHandlers: map[string]EventHandler{}, responseHandlers: map[string]ResponseHandler{}}
 
-type EventHandler func(Client, *Payload) *ResponseData
-type ResponseHandler func(Client, *Payload)
+type EventHandler func(Client, events.EventData) events.EventData
+type ResponseHandler func(Client, events.EventData)
 
 type wrapper struct {
 	eventHandlers    map[string]EventHandler
@@ -27,63 +28,6 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-}
-
-type Data struct {
-	Message string `json:"message"`
-}
-
-type Event struct {
-	Type string `json:"type" validate:"required,min=3"`
-	To   string `json:"to"`
-	Data Data   `json:"data"`
-}
-
-type Credentials struct {
-	Token    string `json:"token" validate:"required,min=3"`
-	Id       string `json:"id" validate:"required,min=3"`
-	Username string `json:"username" validate:"required,min=3"`
-}
-
-type Payload struct {
-	MessageId   string       `json:"messageId"`
-	Event       *Event       `json:"event" validate:"required"`
-	Credentials *Credentials `json:"credentials"`
-}
-
-var payloadValidator = validator.New()
-var credentialsValidator = validator.New()
-
-func (p *Payload) unmarshalFrom(msg []byte) error {
-	err := json.Unmarshal(msg, p)
-
-	if err != nil {
-		return err
-	}
-
-	if err := payloadValidator.Struct(p); err != nil {
-		return err
-	}
-
-	if p.Event.Type == "response" {
-		if len(p.Event.To) == 0 {
-			return fmt.Errorf("\"to\" field is required on a response event")
-		}
-	} else {
-		if p.Credentials == nil {
-			return fmt.Errorf("\"credentials\" field is required")
-		}
-
-		if err := credentialsValidator.Struct(*p.Credentials); err != nil {
-			return err
-		}
-
-		if len(p.MessageId) == 0 {
-			return fmt.Errorf("\"messageId\" field is required")
-		}
-	}
-
-	return nil
 }
 
 func (wr *wrapper) On(eventName string, handler EventHandler) {
@@ -103,7 +47,7 @@ func (wr *wrapper) OnResponse(responseId string, handler ResponseHandler) {
 	wr.responseHandlers[responseId] = handler
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(20 * time.Second)
 		delete(wr.responseHandlers, responseId)
 	}()
 }
@@ -114,27 +58,39 @@ func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 		return
 	}
 
-	p := new(Payload)
-	if err := p.unmarshalFrom(msg); err != nil {
-		c.SendRawError(err)
+	p := new(payloads.GenericPayload)
+	if err := p.UnmarshalFrom(msg); err != nil {
+		c.sendRawError(err)
 		return
 	}
 
-	eventType := p.Event.Type
-	if eventType == "response" {
+	if p.Event.Type == "response" {
+		p := new(payloads.ResponsePayload)
+
+		if err := json.Unmarshal(msg, p); err != nil {
+			c.sendRawError(err)
+			return
+		}
 		handler := wr.responseHandlers[p.Event.To]
 
 		if handler != nil {
-			handler(c, p)
+			handler(c, p.Event.Data)
 			delete(wr.responseHandlers, p.Event.To)
 		}
 	} else {
-		handler := wr.eventHandlers[eventType]
+
+		p := new(payloads.NormalEventPayload)
+
+		if err := json.Unmarshal(msg, p); err != nil {
+			c.sendRawError(err)
+			return
+		}
+		handler := wr.eventHandlers[p.Event.Type]
 
 		if handler != nil {
-			resp := handler(c, p)
+			resp := handler(c, p.Event.Data)
 			if resp != nil {
-				c.sendResponse(p.MessageId, *resp)
+				c.sendResponse(p.MessageId, resp)
 			}
 		}
 	}

@@ -27,31 +27,29 @@ export type ResponseHandler = (payload: Payload) => void;
 
 const WEBSOCKET_URL = `ws://${window.location.host}/ws`;
 
-type Credentials = {
+export type Credentials = {
 	username: string;
 	token: string;
 	id: string;
 };
 
-class Client {
+export class WsClient {
 	private socket?: WebSocket;
 	private credentials: Credentials;
 
 	private eventHandlers: Map<string, EventHandler>;
 	private responseHandlers: Map<string, ResponseHandler>;
 
-	public constructor() {
-		this.credentials = { username: '', token: '', id: '' };
+	public constructor(credentials: Credentials) {
+		this.credentials = credentials;
 		this.eventHandlers = new Map<string, EventHandler>();
 		this.responseHandlers = new Map<string, ResponseHandler>();
 	}
 
-	public connect(username: string, playerId: string, token: string) {
-		this.credentials = { username, id: playerId, token };
-
+	public connect() {
 		this.socket = new WebSocket(WEBSOCKET_URL);
 
-		return new Promise((resolve, reject) => {
+		return new Promise<string>((resolve, reject) => {
 			const onOpen = () => {
 				this.socket!.removeEventListener('open', onOpen);
 				this.socket!.removeEventListener('error', onError);
@@ -69,14 +67,6 @@ class Client {
 			this.socket!.addEventListener('open', onOpen);
 			this.socket!.addEventListener('error', onError);
 		});
-	}
-
-	public joinRoom(roomId: string) {
-		this.sendEvent({ type: 'join', data: { roomId } });
-	}
-
-	public startRoom(roomId: string) {
-		this.sendEvent({ type: 'start', data: { roomId } });
 	}
 
 	public sendEvent(event: Event, handler?: ResponseHandler) {
@@ -111,7 +101,7 @@ class Client {
 		this.eventHandlers.set(eventName, handler);
 	}
 
-	public onResponse(responseId: string, handler: ResponseHandler) {
+	private onResponse(responseId: string, handler: ResponseHandler) {
 		const handlerAlreadyExist = this.responseHandlers.has(responseId);
 		if (handlerAlreadyExist) {
 			throw new Error('this event already has an handler');
@@ -190,5 +180,3 @@ class Client {
 		});
 	}
 }
-
-export const client = new Client();

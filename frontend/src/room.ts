@@ -1,20 +1,66 @@
-import { derived, writable } from 'svelte/store';
-import { client } from './wsclient';
+import type { Credentials, Payload } from './wsclient';
+import { WsClient } from './wsclient';
 
-const writableHost = writable('');
-const writablePlayers = writable<{ username: string; team: number }[]>([]);
+import type { Writable } from 'svelte/store';
+import { writable } from 'svelte/store';
 
-client.on('playerJoin', (data) => {
-	console.log(data);
-	writableHost.set(data?.host);
-	writablePlayers.set(data?.players);
-});
+export enum GameState {
+	NotConnected,
+	WaitingRoom,
+}
 
-client.on('infos', (data) => {
-	console.log(data);
-	writableHost.set(data?.host);
-	writablePlayers.set(data?.players);
-});
+export class Room {
+	private socket?: WsClient;
+	private credentials?: Credentials;
+	private gameState: Writable<GameState>;
+	private roomId?: string;
 
-export const players = derived(writablePlayers, (s) => s);
-export const host = derived(writableHost, (s) => s);
+	public constructor() {
+		this.gameState = writable(GameState.NotConnected);
+	}
+
+	public join(roomId: string) {
+		this.errorIfNotConnected();
+
+		const joinEvent = {
+			type: 'join',
+			data: {
+				roomId,
+			},
+		};
+
+		return new Promise<void>((resolve, reject) => {
+			const timeoutId = setTimeout(() => {
+				reject();
+			}, 5000);
+
+			this.socket!.sendEvent(joinEvent, (payload: Payload) => {
+				clearTimeout(timeoutId);
+				resolve();
+			});
+		});
+	}
+
+	public GameState() {
+		return {
+			subscribe: this.gameState.subscribe,
+		};
+	}
+
+	private setGameState(gameState: GameState) {
+		this.gameState.set(gameState);
+	}
+
+	public connect(credentials: Credentials) {
+		this.credentials = credentials;
+
+		this.socket = new WsClient(this.credentials);
+		return this.socket.connect();
+	}
+
+	private errorIfNotConnected() {
+		if (this.socket === undefined) {
+			throw new Error('the websocket is not connected');
+		}
+	}
+}

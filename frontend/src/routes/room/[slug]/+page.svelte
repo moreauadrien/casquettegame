@@ -3,12 +3,10 @@
 	import { onMount } from 'svelte';
 
 	import { playerId, token, username } from '@/stores';
-	import { host } from '@/room';
-
-	import { client } from '@/wsclient';
 	import UsernameSelect from '@/views/UsernameSelect.svelte';
 	import QrCodeView from '@/views/QrCodeView.svelte';
 	import PlayerListView from '@/views/PlayerListView.svelte';
+    import { Room } from '@/room';
 
 	const roomId = $page.params.slug;
 
@@ -19,23 +17,20 @@
 
 	let currentView = View.QRCode;
 
+    let room = new Room()
+
 	onMount(() => {
 		if ($username.length === 0) return;
-
-		joinRoom();
+        
+        joinRoom()
 	});
-
-	$: {
-		if ($playerId !== $host && currentView === View.QRCode) {
-			currentView = View.PlayerList;
-		}
-	}
 
 	async function joinRoom() {
 		try {
-			await client.connect($username, $playerId, $token);
+            await room.connect({username: $username, token: $token, id: $playerId})
+            await room.join(roomId)
 
-			client.joinRoom(roomId);
+            console.log("ok")
 		} catch (e) {
 			console.error(e);
 		}
@@ -51,7 +46,7 @@
 	}
 
 	function handleBack() {
-		if (currentView !== View.PlayerList || $playerId !== $host) return;
+		//if (currentView !== View.PlayerList || $playerId !== $host) return;
 
 		currentView = View.QRCode;
 	}
@@ -68,5 +63,5 @@
 {:else if currentView === View.QRCode}
 	<QrCodeView on:next={nextClick} />
 {:else if currentView === View.PlayerList}
-	<PlayerListView on:back={handleBack} on:startGame={startGame} isHost={$playerId === $host} />
+	<PlayerListView on:back={handleBack} on:startGame={startGame} isHost={true} />
 {/if}

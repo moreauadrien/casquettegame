@@ -4,7 +4,7 @@
 	import Button from '@/components/Button.svelte';
 	import PlayerTag from '@/components/PlayerTag.svelte';
 
-	import { players } from '@/room';
+    export let players: any[]
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();

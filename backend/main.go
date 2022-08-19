@@ -6,8 +6,9 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
-	"timesup/game"
+	"timesup/events"
 	"timesup/ws"
 
 	"github.com/gin-gonic/gin"
@@ -26,8 +27,6 @@ func loadCards() []string {
 
 	return strings.Split(string(data), "\n")
 }
-
-var players = map[string]game.Player{}
 
 func main() {
 	wrt := io.MultiWriter(os.Stdout, &lumberjack.Logger{
@@ -53,8 +52,6 @@ func main() {
 	})
 
 	router.GET("/ws", gin.WrapF(ws.Wrapper.HttpHandler))
-
-	router.POST("/api/createRoom", game.HandleRoomCreation)
 
 	router.Run(":8080")
 }

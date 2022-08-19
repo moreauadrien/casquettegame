@@ -1,21 +1,94 @@
 package ws
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
-	"timesup/game"
+	"timesup/events"
+	"timesup/payloads"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
+type Client struct {
+	conn    *websocket.Conn
+	wrapper wrapper
+}
+
+func New(conn *websocket.Conn, w wrapper) Client {
+	return Client{conn, w}
+}
+
+func (c *Client) sendRawError(e error) {
+	msg := fmt.Sprintf("ERROR: %v", e.Error())
+	if err := c.conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+		log.Printf("failed to send error: %v", e.Error())
+	}
+}
+
+func (c *Client) sendResponse(to string, data events.EventData) {
+	p := payloads.ResponsePayload{
+		Event: events.ResponseEvent{
+			Type: "response",
+			To:   to,
+			Data: data,
+		},
+	}
+
+	if err := c.conn.WriteMessage(websocket.TextMessage, p.Marshal()); err != nil {
+		log.Printf("the response to %v could not be sent", to)
+		return
+	}
+}
+
+func (c *Client) SendEvent(eventType string, eventData events.EventData, handler ResponseHandler) error {
+	p := payloads.GenericPayload{
+		MessageId: uuid.NewString(),
+		Event: &events.GenericEvent{
+			Type: eventType,
+			Data: eventData,
+		},
+	}
+
+	if err := c.conn.WriteMessage(websocket.TextMessage, p.Marshal()); err != nil {
+		return fmt.Errorf("the message %v could not be sent", p)
+	}
+
+	c.wrapper.OnResponse(p.MessageId, handler)
+
+	return nil
+}
+
+/*
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+)
+
+type PlayerInfos struct {
+	Username string `json:"username"`
+	Id       string `json:"id"`
+	Team     int    `json:"team"`
+}
+
+type RoomInfos struct {
+	Host    string        `json:"host"`
+	Players []PlayerInfos `json:"players"`
+}
+
 type ResponseData struct {
-	Message string `json:"message"`
+	Status    string    `json:"status"`
+	Message   string    `json:"message"`
+	RoomInfos RoomInfos `json:"roomInfos"`
 }
 
 type Message struct {
-	MessageId string     `json:"messageId"`
-	Event     game.Event `json:"event"`
+	MessageId string `json:"messageId"`
+	Event     GeEvent  `json:"event"`
 }
 
 func (m Message) Marshal() []byte {
@@ -27,10 +100,10 @@ func (m Message) Marshal() []byte {
 	return b
 }
 
-func newMessage(event game.Event) Message {
+func newMessage(event Event) Message {
 	return Message{
 		Event:     event,
-		MessageId: uuid.New().String(),
+		MessageId: uuid.NewString(),
 	}
 }
 
@@ -78,14 +151,15 @@ func (c *Client) SendRawError(e error) {
 	}
 }
 
-func (c *Client) SendEvent(event game.Event, handler ResponseHandler) {
+func (c *Client) SendEvent(event Event, handler ResponseHandler) error {
 	m := newMessage(event)
 	if err := c.conn.WriteMessage(websocket.TextMessage, m.Marshal()); err != nil {
-		log.Printf("the message %v could not be sent", m)
-		return
+		return fmt.Errorf("the message %v could not be sent", m)
 	}
 
 	c.wrapper.OnResponse(m.MessageId, handler)
+
+	return nil
 }
 
 func (c *Client) sendResponse(to string, data ResponseData) {
@@ -96,3 +170,4 @@ func (c *Client) sendResponse(to string, data ResponseData) {
 		return
 	}
 }
+*/
