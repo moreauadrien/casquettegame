@@ -22,8 +22,8 @@ const payloadSchema = Joi.object({
 	messageId: Joi.string(),
 });
 
-export type EventHandler = (payload: any) => void;
-export type ResponseHandler = (payload: any) => void;
+export type EventHandler = (payload: Payload) => object | void;
+export type ResponseHandler = (payload: Payload) => void;
 
 const WEBSOCKET_URL = `ws://${window.location.host}/ws`;
 
@@ -130,6 +130,28 @@ class Client {
 		this.setupCloseHandler();
 	}
 
+	private runEventHandler(payload: Payload) {
+		if (payload.messageId === undefined) {
+			throw new Error('"messageId" field is required');
+		}
+
+		const handler = this.eventHandlers.get(payload.event.type);
+
+		if (handler !== undefined) {
+			const responseData = handler(payload);
+
+			if (responseData !== undefined) {
+				const responseEvent = {
+					type: 'response',
+					to: payload.messageId,
+					data: responseData,
+				};
+
+				this.sendEvent(responseEvent);
+			}
+		}
+	}
+
 	private setupMessageHandler() {
 		this.socket!.addEventListener('message', (e) => {
 			const rawPayload = JSON.parse(e.data);
@@ -141,25 +163,19 @@ class Client {
 
 			const payload = <Payload>rawPayload;
 
-			let handler;
-
 			if (payload.event.type === 'response') {
 				if (payload.event.to === undefined) {
 					throw new Error('"to" field is required on a response event');
 				}
 
-				handler = this.responseHandlers.get(payload.event.to!);
+				const handler = this.responseHandlers.get(payload.event.to!);
 				this.responseHandlers.delete(payload.event.to!);
-			} else {
-				if (payload.messageId === undefined) {
-					throw new Error('"messageId" field is required');
+
+				if (handler !== undefined) {
+					handler(payload);
 				}
-
-				handler = this.eventHandlers.get(payload.event.type);
-			}
-
-			if (handler !== undefined) {
-				handler(payload);
+			} else {
+				this.runEventHandler(payload);
 			}
 		});
 	}

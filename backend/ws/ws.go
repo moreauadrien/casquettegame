@@ -28,10 +28,14 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type Data struct {
+	Message string `json:"message"`
+}
+
 type Event struct {
 	Type string `json:"type" validate:"required,min=3"`
 	To   string `json:"to"`
-	Data string `json:"data"`
+	Data Data   `json:"data"`
 }
 
 type Credentials struct {
