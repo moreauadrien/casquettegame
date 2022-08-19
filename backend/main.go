@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
-
 	"timesup/events"
 	"timesup/ws"
 

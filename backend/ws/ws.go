@@ -14,8 +14,8 @@ import (
 
 var Wrapper = wrapper{eventHandlers: map[string]EventHandler{}, responseHandlers: map[string]ResponseHandler{}}
 
-type EventHandler func(Client, events.EventData) events.EventData
-type ResponseHandler func(Client, events.EventData)
+type EventHandler func(Client, events.EventData) *events.ResponseData
+type ResponseHandler func(Client, events.ResponseData)
 
 type wrapper struct {
 	eventHandlers    map[string]EventHandler
@@ -78,19 +78,19 @@ func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 			delete(wr.responseHandlers, p.Event.To)
 		}
 	} else {
-
 		p := new(payloads.NormalEventPayload)
 
 		if err := json.Unmarshal(msg, p); err != nil {
 			c.sendRawError(err)
 			return
 		}
+
 		handler := wr.eventHandlers[p.Event.Type]
 
 		if handler != nil {
 			resp := handler(c, p.Event.Data)
 			if resp != nil {
-				c.sendResponse(p.MessageId, resp)
+				c.sendResponse(p.MessageId, *resp)
 			}
 		}
 	}
