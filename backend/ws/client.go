@@ -9,6 +9,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type ResponseData struct {
+	Message string `json:"message"`
+}
+
 type Message struct {
 	MessageId string     `json:"messageId"`
 	Event     game.Event `json:"event"`
@@ -31,9 +35,9 @@ func newMessage(event game.Event) Message {
 }
 
 type ResponseEvent struct {
-	Type string         `json:"type"`
-	To   string         `json:"to"`
-	Data game.EventData `json:"data,omitempty"`
+	Type string       `json:"type"`
+	To   string       `json:"to"`
+	Data ResponseData `json:"data,omitempty"`
 }
 
 type Response struct {
@@ -49,7 +53,7 @@ func (r Response) Marshal() []byte {
 	return b
 }
 
-func newResponse(to string, data game.EventData) Response {
+func newResponse(to string, data ResponseData) Response {
 	return Response{
 		Event: ResponseEvent{
 			Type: "response",
@@ -84,7 +88,7 @@ func (c *Client) SendEvent(event game.Event, handler ResponseHandler) {
 	c.wrapper.OnResponse(m.MessageId, handler)
 }
 
-func (c *Client) SendResponse(to string, data game.EventData) {
+func (c *Client) sendResponse(to string, data ResponseData) {
 	resp := newResponse(to, data)
 
 	if err := c.conn.WriteMessage(websocket.TextMessage, resp.Marshal()); err != nil {

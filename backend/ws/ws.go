@@ -3,16 +3,17 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/websocket"
 )
 
 var Wrapper = wrapper{eventHandlers: map[string]EventHandler{}, responseHandlers: map[string]ResponseHandler{}}
 
-type EventHandler func(Client, *Payload)
+type EventHandler func(Client, *Payload) *ResponseData
 type ResponseHandler func(Client, *Payload)
 
 type wrapper struct {
@@ -131,7 +132,10 @@ func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 		handler := wr.eventHandlers[eventType]
 
 		if handler != nil {
-			handler(c, p)
+			resp := handler(c, p)
+			if resp != nil {
+				c.sendResponse(p.MessageId, *resp)
+			}
 		}
 	}
 }
