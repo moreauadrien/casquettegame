@@ -12,13 +12,19 @@ type Player struct {
 	Username string
 	Room     *Room
 	Client   *ws.Client
+	team     *Team
 }
 
 func (p *Player) GetInfos() events.PlayerInfos {
 	return events.PlayerInfos{
 		Username: p.Username,
 		Id:       p.Id,
+		Team:     p.team.Color(),
 	}
+}
+
+func (p *Player) SetTeam(t *Team) {
+	p.team = t
 }
 
 func (p *Player) SendEvent(eventType string, eventData events.EventData, handler ws.ResponseHandler) {

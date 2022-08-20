@@ -17,19 +17,37 @@ type Room struct {
 	players []*Player
 	host    *Player
 	state   GameState
+	teams   [2]Team
 }
 
 func NewRoom(host *Player) *Room {
-	return &Room{
+	r := &Room{
 		//Id:      uuid.NewString(),
 		Id:      "abcdefg",
 		host:    host,
 		players: []*Player{host},
 		state:   NotStarted,
+		teams:   [2]Team{newTeam(BLUE), newTeam(PURPLE)},
+	}
+
+	r.addPlayerToSmallestTeam(host)
+
+	return r
+}
+
+func (r *Room) addPlayerToSmallestTeam(p *Player) {
+	if r.teams[0].Len() <= r.teams[1].Len() {
+		r.teams[0].AddPlayer(p)
+		p.SetTeam(&r.teams[0])
+	} else {
+		r.teams[1].AddPlayer(p)
+		p.SetTeam(&r.teams[1])
 	}
 }
 
 func (r *Room) AddPlayer(p *Player) {
+	r.addPlayerToSmallestTeam(p)
+
 	playerList := append(r.ListPlayers(), p.GetInfos())
 	r.BrodcastEvent("playerJoin", struct {
 		Players []events.PlayerInfos `json:"players"`

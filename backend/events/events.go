@@ -7,9 +7,12 @@ import (
 
 type EventData interface{}
 
+type TeamColor int
+
 type PlayerInfos struct {
-	Username string `json:"username"`
-	Id       string `json:"id"`
+	Username string    `json:"username"`
+	Id       string    `json:"id"`
+	Team     TeamColor `json:"team"`
 }
 
 type ResponseData struct {
