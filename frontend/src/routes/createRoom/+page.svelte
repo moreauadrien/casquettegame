@@ -1,56 +1,30 @@
 <script lang="ts">
-	import { createRoom } from '@/api';
 	import { goto } from '$app/navigation';
 
 	import { token, username, playerId } from '@/stores';
-	import TeamsNumberSelect from '@/views/TeamsNumberSelect.svelte';
 	import UsernameSelect from '@/views/UsernameSelect.svelte';
+	import { game } from '@/game';
 
-	enum State {
-		ChooseNumberOfTeams,
-		ChooseYourUserName,
-	}
+	async function createRoom() {
+		try {
+			await game.connect({
+				id: $playerId,
+				token: $token,
+				username: $username,
+			});
 
-	let currentState = State.ChooseNumberOfTeams;
-
-	let numberOfTeams: number;
-
-	async function nextClick() {
-		switch (currentState) {
-			case State.ChooseNumberOfTeams:
-				currentState = State.ChooseYourUserName;
-				break;
-
-			case State.ChooseYourUserName:
-				const roomId = await createRoom({
-					numberOfTeams,
-					hostUsername: $username,
-					hostId: $playerId,
-					hostToken: $token,
-				});
-
-				if (roomId !== undefined) {
-					goto(`/room/${roomId}`);
-				}
-
-				break;
+            const roomId = await game.createRoom()
+            goto(`/room/${roomId}`)
+		} catch (e) {
+			console.error(e);
 		}
 	}
 </script>
 
-{#if currentState === State.ChooseNumberOfTeams}
-	<TeamsNumberSelect
-		on:submit={(e) => {
-			numberOfTeams = e.detail;
-			nextClick();
-		}}
-	/>
-{:else if currentState === State.ChooseYourUserName}
-	<UsernameSelect
-		on:submit={(e) => {
-			username.set(e.detail);
-			nextClick();
-		}}
-		title="Nouvelle partie"
-	/>
-{/if}
+<UsernameSelect
+	on:submit={(e) => {
+		username.set(e.detail);
+		createRoom();
+	}}
+	title="Nouvelle partie"
+/>

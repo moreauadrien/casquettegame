@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
-	"timesup/events"
+	"timesup/game"
 	"timesup/ws"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +49,11 @@ func main() {
 		c.File("./static/app.html")
 	})
 
-	router.GET("/ws", gin.WrapF(ws.Wrapper.HttpHandler))
+	wrapper := ws.NewWrapper()
+
+	router.GET("/ws", gin.WrapF(wrapper.HttpHandler))
+
+	game.InitWsHandlers(wrapper)
 
 	router.Run(":8080")
 }

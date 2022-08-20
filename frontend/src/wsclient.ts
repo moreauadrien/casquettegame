@@ -22,8 +22,8 @@ const payloadSchema = Joi.object({
 	messageId: Joi.string(),
 });
 
-export type EventHandler = (payload: Payload) => object | void;
-export type ResponseHandler = (payload: Payload) => void;
+export type EventHandler = (data: any) => object | void;
+export type ResponseHandler = ((data: any) => void) | (() => void);
 
 const WEBSOCKET_URL = `ws://${window.location.host}/ws`;
 
@@ -128,7 +128,7 @@ export class WsClient {
 		const handler = this.eventHandlers.get(payload.event.type);
 
 		if (handler !== undefined) {
-			const responseData = handler(payload);
+			const responseData = handler(payload.event.data);
 
 			if (responseData !== undefined) {
 				const responseEvent = {
@@ -139,6 +139,19 @@ export class WsClient {
 
 				this.sendEvent(responseEvent);
 			}
+		}
+	}
+
+	private runResponseHandler(payload: Payload) {
+		if (payload.event.to === undefined) {
+			throw new Error('"to" field is required on a response event');
+		}
+
+		const handler = this.responseHandlers.get(payload.event.to!);
+		this.responseHandlers.delete(payload.event.to!);
+
+		if (handler !== undefined) {
+			handler(payload.event.data);
 		}
 	}
 
@@ -154,16 +167,7 @@ export class WsClient {
 			const payload = <Payload>rawPayload;
 
 			if (payload.event.type === 'response') {
-				if (payload.event.to === undefined) {
-					throw new Error('"to" field is required on a response event');
-				}
-
-				const handler = this.responseHandlers.get(payload.event.to!);
-				this.responseHandlers.delete(payload.event.to!);
-
-				if (handler !== undefined) {
-					handler(payload);
-				}
+				this.runResponseHandler(payload);
 			} else {
 				this.runEventHandler(payload);
 			}

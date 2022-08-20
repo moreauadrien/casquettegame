@@ -7,8 +7,17 @@ import (
 
 type EventData interface{}
 
+type PlayerInfos struct {
+	Username string `json:"username"`
+	Id       string `json:"id"`
+}
+
 type ResponseData struct {
-	Status string `json:"status"`
+	Status  string        `json:"status"`
+	Message string        `json:"message,omitempty"`
+	RoomId  string        `json:"roomId,omitempty"`
+	Players []PlayerInfos `json:"players,omitempty"`
+	Host    string        `json:"host,omitempty"`
 }
 
 type JoinData struct {

@@ -1,10 +1,12 @@
 <script lang="ts">
+    import type { PlayerInfos } from '@/api';
+
 	export let isHost: boolean;
 	import BackButton from '@/components/BackButton.svelte';
 	import Button from '@/components/Button.svelte';
 	import PlayerTag from '@/components/PlayerTag.svelte';
 
-    export let players: any[]
+    export let players: PlayerInfos[]
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
@@ -30,7 +32,7 @@
 	<p class="mt-20 text-center font-inter font-medium text-4xl">Liste des<br />joueurs</p>
 
 	<div class="flex flex-col items-center mt-8">
-		{#each $players as player}
+		{#each players as player}
 			<PlayerTag username={player.username} team={player.team} />
 		{/each}
 	</div>

@@ -12,14 +12,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var Wrapper = wrapper{eventHandlers: map[string]EventHandler{}, responseHandlers: map[string]ResponseHandler{}}
-
-type EventHandler func(Client, events.EventData) *events.ResponseData
+type EventHandler func(Client, payloads.Credentials, events.EventData) *events.ResponseData
 type ResponseHandler func(Client, events.ResponseData)
 
-type wrapper struct {
+type Wrapper struct {
 	eventHandlers    map[string]EventHandler
 	responseHandlers map[string]ResponseHandler
+}
+
+func NewWrapper() Wrapper {
+	return Wrapper{
+		eventHandlers:    map[string]EventHandler{},
+		responseHandlers: map[string]ResponseHandler{},
+	}
 }
 
 var upgrader = websocket.Upgrader{
@@ -30,7 +35,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (wr *wrapper) On(eventName string, handler EventHandler) {
+func (wr *Wrapper) On(eventName string, handler EventHandler) {
 	if _, exist := wr.eventHandlers[eventName]; exist {
 		panic(fmt.Errorf("\"%v\" already has a handler ", eventName))
 	}
@@ -39,7 +44,7 @@ func (wr *wrapper) On(eventName string, handler EventHandler) {
 	log.Printf("\"%v\" handler registered", eventName)
 }
 
-func (wr *wrapper) OnResponse(responseId string, handler ResponseHandler) {
+func (wr *Wrapper) OnResponse(responseId string, handler ResponseHandler) {
 	if _, exist := wr.responseHandlers[responseId]; exist {
 		panic(fmt.Errorf("message \"%v\" already has a handler ", responseId))
 	}
@@ -52,7 +57,7 @@ func (wr *wrapper) OnResponse(responseId string, handler ResponseHandler) {
 	}()
 }
 
-func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
+func (wr *Wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 	if msgType != websocket.TextMessage {
 		log.Printf("message type %v is not supported", msgType)
 		return
@@ -88,7 +93,7 @@ func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 		handler := wr.eventHandlers[p.Event.Type]
 
 		if handler != nil {
-			resp := handler(c, p.Event.Data)
+			resp := handler(c, p.Credentials, p.Event.Data)
 			if resp != nil {
 				c.sendResponse(p.MessageId, *resp)
 			}
@@ -96,7 +101,7 @@ func (wr *wrapper) handleIncomingMessage(c Client, msgType int, msg []byte) {
 	}
 }
 
-func (wr *wrapper) HttpHandler(w http.ResponseWriter, r *http.Request) {
+func (wr *Wrapper) HttpHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Failed to set websocket upgrade: %+v", err)

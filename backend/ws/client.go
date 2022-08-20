@@ -12,10 +12,10 @@ import (
 
 type Client struct {
 	conn    *websocket.Conn
-	wrapper wrapper
+	wrapper Wrapper
 }
 
-func New(conn *websocket.Conn, w wrapper) Client {
+func New(conn *websocket.Conn, w Wrapper) Client {
 	return Client{conn, w}
 }
 

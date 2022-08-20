@@ -6,35 +6,28 @@
 	import UsernameSelect from '@/views/UsernameSelect.svelte';
 	import QrCodeView from '@/views/QrCodeView.svelte';
 	import PlayerListView from '@/views/PlayerListView.svelte';
-    import { Room } from '@/room';
+	import { game, GameState } from '@/game';
 
 	const roomId = $page.params.slug;
+	const gameState = game.state();
+    const { players } = game
 
 	enum View {
 		QRCode,
 		PlayerList,
 	}
 
-	let currentView = View.QRCode;
-
-    let room = new Room()
+	let currentView = View.PlayerList;
 
 	onMount(() => {
-		if ($username.length === 0) return;
-        
-        joinRoom()
-	});
+        if ($gameState === GameState.NotConnected) return
 
-	async function joinRoom() {
-		try {
-            await room.connect({username: $username, token: $token, id: $playerId})
-            await room.join(roomId)
-
-            console.log("ok")
-		} catch (e) {
-			console.error(e);
+		if ($gameState === GameState.WaitingRoom) {
+			if (game.isHost()) {
+				currentView = View.QRCode;
+			}
 		}
-	}
+	});
 
 	function nextClick() {
 		if (currentView !== View.QRCode) return;
@@ -52,16 +45,8 @@
 	}
 </script>
 
-{#if $username.length === 0}
-	<UsernameSelect
-		on:submit={(e) => {
-			username.set(e.detail);
-			joinRoom();
-		}}
-		title="Rejoins une partie"
-	/>
-{:else if currentView === View.QRCode}
-	<QrCodeView on:next={nextClick} />
+{#if currentView === View.QRCode}
+    <QrCodeView on:next={nextClick} url={game.getRoomLink()}/>
 {:else if currentView === View.PlayerList}
-	<PlayerListView on:back={handleBack} on:startGame={startGame} isHost={true} />
+    <PlayerListView on:back={handleBack} on:startGame={startGame} isHost={game.isHost()} players={$players} />
 {/if}

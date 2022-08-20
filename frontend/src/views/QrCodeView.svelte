@@ -1,4 +1,6 @@
 <script lang="ts">
+    export let url: string
+    
 	import Button from '@/components/Button.svelte';
 	import QrCode from '@/components/QrCode.svelte';
 	import { createEventDispatcher } from 'svelte';
@@ -17,7 +19,7 @@
 
 	<p class="mt-12 text-center font-inter font-medium text-xl">Scan le QR code</p>
 	<div class="flex justify-center">
-		<QrCode data={window.location.href} size={250} />
+		<QrCode data={url} size={250} />
 	</div>
 
 	<div class="flex justify-center absolute bottom-28 w-full">
