@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 	"timesup/events"
+	"timesup/structures"
 
-	_ "github.com/google/uuid"
+	"github.com/google/uuid"
 )
 
 type GameState string
@@ -21,22 +22,29 @@ const (
 )
 
 type Room struct {
-	Id      string
+	Id    string
+	host  *Player
+	state GameState
+
 	players []*Player
-	host    *Player
-	state   GameState
 	teams   [2]Team
 	speaker *Player
+
+	guessedCards     []string
+	turnGuessedCards []string
+	remainingCards   *structures.CardPile
+	roundEndSignal   chan struct{}
 }
 
 func NewRoom(host *Player) *Room {
 	r := &Room{
-		//Id:      uuid.NewString(),
-		Id:      "abcdefg",
-		host:    host,
-		players: []*Player{host},
-		state:   WaitingRoom,
-		teams:   [2]Team{newTeam(BLUE), newTeam(PURPLE)},
+		Id:             uuid.NewString(),
+		host:           host,
+		players:        []*Player{host},
+		state:          WaitingRoom,
+		teams:          [2]Team{newTeam(BLUE), newTeam(PURPLE)},
+		guessedCards:   make([]string, 0, 40),
+		remainingCards: &structures.CardPile{},
 	}
 
 	r.addPlayerToSmallestTeam(host)
@@ -65,9 +73,16 @@ func (r *Room) AddPlayer(p *Player) {
 	r.players = append(r.players, p)
 }
 
-func (r *Room) BrodcastEvent(eventType string, eventData events.EventData) {
+func (r *Room) BrodcastEvent(eventType string, eventData events.EventData, except ...*Player) {
+	exceptSet := make(map[*Player]bool, len(except))
+	for _, p := range except {
+		exceptSet[p] = true
+	}
+
 	for _, p := range r.players {
-		p.SendEvent(eventType, eventData, nil)
+		if exceptSet[p] == false {
+			p.SendEvent(eventType, eventData, nil)
+		}
 	}
 }
 
@@ -95,20 +110,64 @@ func (r *Room) SetState(state GameState) {
 			State:   string(state),
 			Speaker: r.speaker.GetInfos(),
 		})
+
+	case Turn:
+		r.turnGuessedCards = make([]string, 0, len(r.guessedCards))
+
+		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
+			State: string(state),
+		}, r.speaker)
+
+		r.roundEndSignal = make(chan struct{})
+		go func() {
+			select {
+			case <-time.After(5 * time.Second):
+				r.SetState(TurnRecap)
+
+			case <-r.roundEndSignal:
+				r.SetState(TurnRecap)
+			}
+		}()
+
+	case TurnRecap:
+		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
+			State: string(state),
+			Cards: r.turnGuessedCards,
+		})
 	}
 }
 
+func (r *Room) ValidateCard() {
+	c := r.remainingCards.Remove()
+
+	r.guessedCards = append(r.guessedCards, c.Value())
+	r.turnGuessedCards = append(r.turnGuessedCards, c.Value())
+
+	r.BrodcastEvent("turnUpdate", events.TurnUpdate{Cards: r.turnGuessedCards}, r.speaker)
+
+	if r.remainingCards.Len() == 0 {
+		close(r.roundEndSignal)
+	}
+}
+
+func (r *Room) PassCard() {
+	c := r.remainingCards.Remove()
+	r.remainingCards.Add(c.Value())
+}
+
 func (r *Room) Start() error {
+
 	if r.state != WaitingRoom {
 		return fmt.Errorf("room #%v has already started", r.Id)
 	}
 
 	r.SetState(TeamsRecap)
+	r.remainingCards.Add(cards[0:40]...)
 
 	r.speaker = r.host
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		r.SetState(WaitTurnStart)
 	}()
 

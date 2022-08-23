@@ -2,6 +2,7 @@ import type { Credentials } from './wsclient';
 import { WsClient } from './wsclient';
 
 import type { Writable, Readable } from 'svelte/store';
+import { get } from 'svelte/store';
 import { writable, derived } from 'svelte/store';
 import type { PlayerInfos } from './api';
 import { Team } from './utils';
@@ -29,6 +30,9 @@ export class Game {
 	private wPlayers: Writable<PlayerInfos[]>;
 	public players: Readable<PlayerInfos[]>;
 
+	private wCards: Writable<string[]>;
+	public cards: Readable<string[]>;
+
 	private speaker?: PlayerInfos;
 
 	public constructor() {
@@ -39,6 +43,9 @@ export class Game {
 
 		this.wPlayers = writable([]);
 		this.players = derived(this.wPlayers, (s) => s);
+
+		this.wCards = writable([]);
+		this.cards = derived(this.wCards, (s) => s);
 	}
 
 	public createRoom() {
@@ -117,7 +124,43 @@ export class Game {
 			throw new Error('you have to be the speaker to start the turn');
 		}
 
-		this.socket!.sendEvent({ type: 'startTurn' });
+		this.socket!.sendEvent({ type: 'startTurn' }, (data: any) => {
+			if (data.status === 'success') {
+				this.wCards.set(data.cards);
+
+				this.setGameState(GameState.Turn);
+			}
+		});
+	}
+
+	public passCard() {
+		if (this.isSpeaker() === false) {
+			throw new Error("you can't pass card if you are not the speaker");
+		}
+
+		if (get(this.cards).length !== 0) {
+			this.socket!.sendEvent({ type: 'passCard', data: { cards: get(this.cards)[0] } });
+
+			this.wCards.update((current) => {
+				current.push(current.shift()!);
+				return current;
+			});
+		}
+	}
+
+	public validateCard() {
+		if (this.isSpeaker() === false) {
+			throw new Error("you can't validate card if you are not the speaker");
+		}
+
+		if (get(this.cards)) {
+			this.wCards.update((current) => {
+				current.shift();
+				return current;
+			});
+
+			this.socket!.sendEvent({ type: 'validateCard', data: { cards: get(this.cards)[0] } });
+		}
 	}
 
 	private registerEventHandlers() {
@@ -127,7 +170,7 @@ export class Game {
 
 		this.socket?.on('stateUpdate', (data: any) => {
 			const state = data.state as GameState;
-			this.gameState.set(state);
+			this.setGameState(state);
 
 			switch (state) {
 				case GameState.TeamsRecap:
@@ -137,7 +180,15 @@ export class Game {
 				case GameState.WaitTurnStart:
 					this.speaker = data.speaker;
 					break;
+
+				case GameState.TurnRecap:
+					this.wCards.set(data.cards);
+					break;
 			}
+		});
+
+		this.socket?.on('turnUpdate', (data: any) => {
+			this.wCards.set(data.cards);
 		});
 	}
 

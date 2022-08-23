@@ -1,30 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
-	"strings"
 	"timesup/game"
 	"timesup/ws"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func loadCards() []string {
-	data, err := os.ReadFile("cards.txt")
-	check(err)
-
-	return strings.Split(string(data), "\n")
-}
 
 func main() {
 	wrt := io.MultiWriter(os.Stdout, &lumberjack.Logger{
@@ -35,9 +20,6 @@ func main() {
 		Compress:   false,
 	})
 	log.SetOutput(wrt)
-
-	cards := loadCards()
-	fmt.Println(cards)
 
 	router := gin.Default()
 	router.Static("/_app", "./static/_app")

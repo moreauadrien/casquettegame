@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"timesup/events"
 	"timesup/payloads"
 	"timesup/ws"
@@ -9,6 +11,17 @@ import (
 
 var rooms = map[string]*Room{}
 var players = map[string]*Player{}
+
+var cards = loadCards()
+
+func loadCards() []string {
+	data, err := os.ReadFile("cards.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.Split(string(data), "\n")
+}
 
 func InitWsHandlers(wrapper ws.Wrapper) {
 	wrapper.On("create", func(c ws.Client, cred payloads.Credentials, ed events.EventData) *events.ResponseData {
@@ -130,6 +143,116 @@ func InitWsHandlers(wrapper ws.Wrapper) {
 				Message: err.Error(),
 			}
 		}
+
+		return &events.ResponseData{
+			Status: "success",
+		}
+	})
+
+	wrapper.On("startTurn", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
+		p := players[creds.Token]
+		if p == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "this player does not exist",
+			}
+		}
+
+		r := p.Room
+		if r == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not in a room",
+			}
+		}
+
+		if r.speaker.Token != p.Token {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is currently not the speaker",
+			}
+		}
+
+		r.SetState(Turn)
+
+		return &events.ResponseData{
+			Status: "success",
+			Cards:  r.remainingCards,
+		}
+	})
+
+	wrapper.On("validateCard", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
+
+		p := players[creds.Token]
+		if p == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "this player does not exist",
+			}
+		}
+
+		r := p.Room
+		if r == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not in a room",
+			}
+		}
+
+		if r.speaker.Token != p.Token {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is currently not the speaker",
+			}
+		}
+
+		if r.state != Turn {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "the turn is over",
+			}
+		}
+
+		r.ValidateCard()
+
+		return &events.ResponseData{
+			Status: "success",
+		}
+	})
+
+	wrapper.On("passCard", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
+
+		p := players[creds.Token]
+		if p == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "this player does not exist",
+			}
+		}
+
+		r := p.Room
+		if r == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not in a room",
+			}
+		}
+
+		if r.speaker.Token != p.Token {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is currently not the speaker",
+			}
+		}
+
+		if r.state != Turn {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "the turn is over",
+			}
+		}
+
+		r.PassCard()
 
 		return &events.ResponseData{
 			Status: "success",

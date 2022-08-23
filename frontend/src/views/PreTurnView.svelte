@@ -7,7 +7,7 @@
     import { username } from '@/stores';
     import { createEventDispatcher } from 'svelte';
 
-	export let isSpeaker: Boolean;
+	export let isSpeaker: boolean;
 	export let speaker: PlayerInfos;
 
     const dispatch = createEventDispatcher()

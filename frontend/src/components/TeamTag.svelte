@@ -4,6 +4,7 @@
 	export let team: Team;
 
 	const teamBackgroundColor: { [key in Team]: string } = {
+		[Team.UNDEFINED]: '',
 		[Team.BLUE]: 'bg-indigo-500',
 		[Team.PURPLE]: 'bg-purple-500',
 		[Team.RED]: 'bg-rose-500',
@@ -11,6 +12,7 @@
 	};
 
 	const teamNumber: { [key in Team]: number } = {
+		[Team.UNDEFINED]: 0,
 		[Team.BLUE]: 1,
 		[Team.PURPLE]: 2,
 		[Team.RED]: 3,

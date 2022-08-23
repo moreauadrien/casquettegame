@@ -14,5 +14,5 @@
 </script>
 
 <div class="w-72 h-10 flex justify-center items-center rounded-3xl m-1 {teamColors[team]}">
-	<p class="text-2xl">{username}</p>
+	<p class="text-2xl font-medium font-inter">{username}</p>
 </div>

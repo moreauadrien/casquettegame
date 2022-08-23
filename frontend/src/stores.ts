@@ -31,7 +31,7 @@ function createTokenStore() {
 		let value = localStorage.getItem('token');
 		if (value === null) {
 			const token = generateToken();
-			localStorage.setItem('token', token);
+			//localStorage.setItem('token', token);
 			set(token);
 		} else {
 			set(value);
@@ -50,7 +50,7 @@ function createIdStore() {
 		let value = localStorage.getItem('id');
 		if (value === null) {
 			const id = generateId();
-			localStorage.setItem('id', id);
+			//localStorage.setItem('id', id);
 			set(id);
 		} else {
 			set(value);

@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"reflect"
+	"timesup/structures"
 )
 
 type EventData interface{}
@@ -16,26 +17,28 @@ type PlayerInfos struct {
 }
 
 type ResponseData struct {
-	Status  string        `json:"status"`
-	Message string        `json:"message,omitempty"`
-	RoomId  string        `json:"roomId,omitempty"`
-	Players []PlayerInfos `json:"players,omitempty"`
-	Host    string        `json:"host,omitempty"`
-	Team    TeamColor     `json:"team,omitempty"`
+	Status  string               `json:"status"`
+	Message string               `json:"message,omitempty"`
+	RoomId  string               `json:"roomId,omitempty"`
+	Players []PlayerInfos        `json:"players,omitempty"`
+	Host    string               `json:"host,omitempty"`
+	Team    TeamColor            `json:"team,omitempty"`
+	Cards   *structures.CardPile `json:"cards,omitempty"`
 }
 
 type JoinData struct {
 	RoomId string `json:"roomId"`
 }
 
+type TurnUpdate struct {
+	Cards []string `json:"cards,omitempty"`
+}
+
 type StateUpdateData struct {
 	State   string        `json:"state"`
 	Players []PlayerInfos `json:"players,omitempty"`
 	Speaker *PlayerInfos  `json:"speaker,omitempty"`
-}
-
-type GotCardData struct {
-	Card string `json:"card"`
+	Cards   []string      `json:"cards,omitempty"`
 }
 
 type GenericEvent struct {
@@ -51,8 +54,7 @@ type ResponseEvent struct {
 
 func (e *GenericEvent) UnmarshalJSON(data []byte) error {
 	typeName, value, err := UnmarshalCustomValue(data, "type", "data", map[string]reflect.Type{
-		"join":    reflect.TypeOf(JoinData{}),
-		"gotCard": reflect.TypeOf(GotCardData{}),
+		"join": reflect.TypeOf(JoinData{}),
 	})
 
 	if err != nil {

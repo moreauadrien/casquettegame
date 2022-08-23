@@ -5,18 +5,29 @@
 	import CheckIcon from '@/components/icons/CheckIcon.svelte';
 	import CrossIcon from '@/components/icons/CrossIcon.svelte';
 	import TeamTag from '@/components/TeamTag.svelte';
+	import { username } from '@/stores';
 
-	import { Team } from '@/utils';
+	import type { Team } from '@/utils';
+	import { createEventDispatcher } from 'svelte';
 
-	let team = Team.BLUE;
+	export let cards: string[];
+	export let team: Team;
 
-	function validateCard() {}
+	const dispatch = createEventDispatcher();
 
-	function passCard() {}
+	function validateCard() {
+		if (cards[0] === undefined) return;
+		dispatch('validateCard');
+	}
+
+	function passCard() {
+		if (cards[0] === undefined) return;
+		dispatch('passCard');
+	}
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">Marc</p>
+	<p class="mt-14 text-center font-inter font-medium text-2xl">{$username}</p>
 
 	<div class="flex justify-center mt-2">
 		<TeamTag {team} />
@@ -27,16 +38,16 @@
 	</div>
 
 	<div class="flex justify-center">
-		<BigCard card="Harrison Ford" />
+		<BigCard card={cards[0] ?? ''} />
 	</div>
 
 	<div class="absolute bottom-8 w-full">
 		<div class="m-4 flex justify-center">
-			<Button className="w-72 py-2"><CheckIcon /></Button>
+			<Button className="w-72 py-2" on:click={validateCard}><CheckIcon /></Button>
 		</div>
 
 		<div class="m-4 flex justify-center">
-			<Button className="w-72 py-2 bg-red-400"><CrossIcon /></Button>
+			<Button className="w-72 py-2 bg-red-400" on:click={passCard}><CrossIcon /></Button>
 		</div>
 	</div>
 </div>
