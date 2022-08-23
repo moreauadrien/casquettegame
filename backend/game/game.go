@@ -40,6 +40,7 @@ func InitWsHandlers(wrapper ws.Wrapper) {
 		return &events.ResponseData{
 			Status:  "success",
 			RoomId:  r.Id,
+			Team:    p.team.Color(),
 			Players: r.ListPlayers(),
 		}
 	})
@@ -81,7 +82,7 @@ func InitWsHandlers(wrapper ws.Wrapper) {
 			}
 		}
 
-		if r.state != NotStarted {
+		if r.state != WaitingRoom {
 			return &events.ResponseData{
 				Status:  "error",
 				Message: fmt.Sprintf("room #%v has already started", r.Id),
@@ -95,6 +96,43 @@ func InitWsHandlers(wrapper ws.Wrapper) {
 			Status:  "success",
 			Host:    r.host.Id,
 			Players: r.ListPlayers(),
+			Team:    p.team.Color(),
+		}
+	})
+
+	wrapper.On("startGame", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
+		p := players[creds.Token]
+		if p == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "this player does not exist",
+			}
+		}
+
+		r := p.Room
+		if r == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not in a room",
+			}
+		}
+
+		if r.host.Token != p.Token {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not the host of his room",
+			}
+		}
+
+		if err := r.Start(); err != nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: err.Error(),
+			}
+		}
+
+		return &events.ResponseData{
+			Status: "success",
 		}
 	})
 }

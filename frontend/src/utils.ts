@@ -1,10 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 
-export enum Team {
-	BLUE,
-	PURPLE,
-	RED,
-	YELLOW,
+export const enum Team {
+	UNDEFINED = 'undefined',
+	BLUE = 'blue',
+	PURPLE = 'purple',
+	RED = 'red',
+	YELLOW = 'yellow',
 }
 
 export function generateToken() {

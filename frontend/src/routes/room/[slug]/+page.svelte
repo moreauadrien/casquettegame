@@ -2,51 +2,42 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
-	import { playerId, token, username } from '@/stores';
-	import UsernameSelect from '@/views/UsernameSelect.svelte';
 	import QrCodeView from '@/views/QrCodeView.svelte';
 	import PlayerListView from '@/views/PlayerListView.svelte';
 	import { game, GameState } from '@/game';
+	import TeamView from '@/views/TeamView.svelte';
+    import PreTurnView from '@/views/PreTurnView.svelte';
 
 	const roomId = $page.params.slug;
 	const gameState = game.state();
-    const { players } = game
+	const { players } = game;
 
-	enum View {
-		QRCode,
-		PlayerList,
-	}
-
-	let currentView = View.PlayerList;
+	let showQrCode = false;
 
 	onMount(() => {
-        if ($gameState === GameState.NotConnected) return
+		if ($gameState === GameState.NotConnected) return;
 
 		if ($gameState === GameState.WaitingRoom) {
 			if (game.isHost()) {
-				currentView = View.QRCode;
+				showQrCode = true;
 			}
 		}
 	});
-
-	function nextClick() {
-		if (currentView !== View.QRCode) return;
-		currentView = View.PlayerList;
-	}
-
-	function startGame() {
-		console.log('start game');
-	}
-
-	function handleBack() {
-		//if (currentView !== View.PlayerList || $playerId !== $host) return;
-
-		currentView = View.QRCode;
-	}
 </script>
 
-{#if currentView === View.QRCode}
-    <QrCodeView on:next={nextClick} url={game.getRoomLink()}/>
-{:else if currentView === View.PlayerList}
-    <PlayerListView on:back={handleBack} on:startGame={startGame} isHost={game.isHost()} players={$players} />
+{#if $gameState === GameState.WaitingRoom}
+	{#if showQrCode}
+		<QrCodeView on:next={() => (showQrCode = false)} url={game.getRoomLink()} />
+	{:else}
+		<PlayerListView
+			on:back={() => (showQrCode = true)}
+			on:startGame={() => game.startRoom()}
+			isHost={game.isHost()}
+			players={$players}
+		/>
+	{/if}
+{:else if $gameState === GameState.TeamsRecap}
+    <TeamView players={$players} team={game.getTeam()}/>
+{:else if $gameState === GameState.WaitTurnStart}
+    <PreTurnView on:startTurn={game.startTurn} isSpeaker={game.isSpeaker()} speaker={game.getSpeaker()}/>
 {/if}

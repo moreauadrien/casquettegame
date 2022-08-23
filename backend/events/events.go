@@ -7,7 +7,7 @@ import (
 
 type EventData interface{}
 
-type TeamColor int
+type TeamColor string
 
 type PlayerInfos struct {
 	Username string    `json:"username"`
@@ -21,10 +21,17 @@ type ResponseData struct {
 	RoomId  string        `json:"roomId,omitempty"`
 	Players []PlayerInfos `json:"players,omitempty"`
 	Host    string        `json:"host,omitempty"`
+	Team    TeamColor     `json:"team,omitempty"`
 }
 
 type JoinData struct {
 	RoomId string `json:"roomId"`
+}
+
+type StateUpdateData struct {
+	State   string        `json:"state"`
+	Players []PlayerInfos `json:"players,omitempty"`
+	Speaker *PlayerInfos  `json:"speaker,omitempty"`
 }
 
 type GotCardData struct {

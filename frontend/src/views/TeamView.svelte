@@ -1,14 +1,23 @@
-<script>
+<script lang="ts">
+	import type { PlayerInfos } from '@/api';
+
+	export let players: PlayerInfos[];
+	export let team: Team;
+
+    let teamMembers: PlayerInfos[]
+    $: {
+        teamMembers = players.filter(p => p.team === team)
+    }
+
 	import PlayerTag from '@/components/PlayerTag.svelte';
 
 	import TeamTag from '@/components/TeamTag.svelte';
-	import { Team } from '@/utils';
-
-	const team = Team.BLUE;
+	import { username } from '@/stores';
+	import type { Team } from '@/utils';
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">Marc</p>
+	<p class="mt-14 text-center font-inter font-medium text-2xl">{$username}</p>
 	<p class="mt-20 text-center font-inter font-medium text-4xl">Ton équipe</p>
 
 	<div class="flex justify-center mt-4">
@@ -16,7 +25,8 @@
 	</div>
 
 	<div class="flex flex-col items-center mt-8">
-		<PlayerTag username="Adrien" {team} />
-		<PlayerTag username="John" {team} />
+		{#each teamMembers as player}
+			<PlayerTag username={player.username} {team} />
+		{/each}
 	</div>
 </div>

@@ -1,15 +1,23 @@
 package game
 
 import (
+	"fmt"
+	"time"
 	"timesup/events"
 
 	_ "github.com/google/uuid"
 )
 
-type GameState int
+type GameState string
 
 const (
-	NotStarted GameState = iota
+	WaitingRoom   GameState = "waitingRoom"
+	TeamsRecap    GameState = "teamsRecap"
+	RulesRecap    GameState = "rulesRecap"
+	WaitTurnStart GameState = "waitTurnStart"
+	Turn          GameState = "turn"
+	TurnRecap     GameState = "turnRecap"
+	ScoreRecap    GameState = "scoreRecap"
 )
 
 type Room struct {
@@ -18,6 +26,7 @@ type Room struct {
 	host    *Player
 	state   GameState
 	teams   [2]Team
+	speaker *Player
 }
 
 func NewRoom(host *Player) *Room {
@@ -26,7 +35,7 @@ func NewRoom(host *Player) *Room {
 		Id:      "abcdefg",
 		host:    host,
 		players: []*Player{host},
-		state:   NotStarted,
+		state:   WaitingRoom,
 		teams:   [2]Team{newTeam(BLUE), newTeam(PURPLE)},
 	}
 
@@ -48,7 +57,7 @@ func (r *Room) addPlayerToSmallestTeam(p *Player) {
 func (r *Room) AddPlayer(p *Player) {
 	r.addPlayerToSmallestTeam(p)
 
-	playerList := append(r.ListPlayers(), p.GetInfos())
+	playerList := append(r.ListPlayers(), *p.GetInfos())
 	r.BrodcastEvent("playerJoin", struct {
 		Players []events.PlayerInfos `json:"players"`
 	}{Players: playerList})
@@ -66,8 +75,42 @@ func (r *Room) ListPlayers() []events.PlayerInfos {
 	list := make([]events.PlayerInfos, 0, len(r.players))
 
 	for _, p := range r.players {
-		list = append(list, p.GetInfos())
+		list = append(list, *p.GetInfos())
 	}
 
 	return list
+}
+
+func (r *Room) SetState(state GameState) {
+	r.state = state
+	switch state {
+	case TeamsRecap:
+		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
+			State:   string(state),
+			Players: r.ListPlayers(),
+		})
+
+	case WaitTurnStart:
+		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
+			State:   string(state),
+			Speaker: r.speaker.GetInfos(),
+		})
+	}
+}
+
+func (r *Room) Start() error {
+	if r.state != WaitingRoom {
+		return fmt.Errorf("room #%v has already started", r.Id)
+	}
+
+	r.SetState(TeamsRecap)
+
+	r.speaker = r.host
+
+	go func() {
+		time.Sleep(5 * time.Second)
+		r.SetState(WaitTurnStart)
+	}()
+
+	return nil
 }

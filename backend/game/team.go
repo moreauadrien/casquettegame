@@ -3,8 +3,8 @@ package game
 import "timesup/events"
 
 const (
-	BLUE events.TeamColor = iota
-	PURPLE
+	BLUE   events.TeamColor = "blue"
+	PURPLE                  = "purple"
 )
 
 type Team struct {

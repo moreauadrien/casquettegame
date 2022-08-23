@@ -15,8 +15,8 @@ type Player struct {
 	team     *Team
 }
 
-func (p *Player) GetInfos() events.PlayerInfos {
-	return events.PlayerInfos{
+func (p *Player) GetInfos() *events.PlayerInfos {
+	return &events.PlayerInfos{
 		Username: p.Username,
 		Id:       p.Id,
 		Team:     p.team.Color(),

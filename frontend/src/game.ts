@@ -1,13 +1,20 @@
-import type { Credentials, Payload } from './wsclient';
+import type { Credentials } from './wsclient';
 import { WsClient } from './wsclient';
 
 import type { Writable, Readable } from 'svelte/store';
 import { writable, derived } from 'svelte/store';
 import type { PlayerInfos } from './api';
+import { Team } from './utils';
 
-export enum GameState {
-	NotConnected,
-	WaitingRoom,
+export const enum GameState {
+	NotConnected = 'notConnected',
+	WaitingRoom = 'waitingRoom',
+	TeamsRecap = 'teamsRecap',
+	RulesRecap = 'rulesRecap',
+	WaitTurnStart = 'waitTurnStart',
+	Turn = 'turn',
+	TurnRecap = 'turnRecap',
+	ScoreRecap = 'scoreRecap',
 }
 
 export class Game {
@@ -16,19 +23,25 @@ export class Game {
 	private gameState: Writable<GameState>;
 	private roomId?: string;
 	private hostId?: string;
-	private wPlayers: Writable<PlayerInfos[]>;
+	private roundNumber: number;
+	private team: Team;
 
+	private wPlayers: Writable<PlayerInfos[]>;
 	public players: Readable<PlayerInfos[]>;
+
+	private speaker?: PlayerInfos;
 
 	public constructor() {
 		this.gameState = writable(GameState.NotConnected);
+		this.roundNumber = 1;
+
+		this.team = Team.UNDEFINED;
+
 		this.wPlayers = writable([]);
 		this.players = derived(this.wPlayers, (s) => s);
 	}
 
 	public createRoom() {
-		this.errorIfNotConnected();
-
 		const createEvent = {
 			type: 'create',
 		};
@@ -48,6 +61,7 @@ export class Game {
 				}
 
 				this.roomId = data.roomId as string;
+				this.team = data.team as Team;
 				this.hostId = this.credentials?.id;
 				this.wPlayers.set(data.players);
 
@@ -60,8 +74,6 @@ export class Game {
 	}
 
 	public joinRoom(roomId: string) {
-		this.errorIfNotConnected();
-
 		const joinEvent = {
 			type: 'join',
 			data: {
@@ -75,12 +87,12 @@ export class Game {
 			}, 5000);
 
 			this.socket!.sendEvent(joinEvent, (data: any) => {
-				console.log(data);
 				if (data?.status === 'error') {
 					reject(`ERROR: ${data?.message}`);
 				}
 
 				this.roomId = roomId;
+				this.team = data.team;
 				this.wPlayers.set(data.players);
 				this.hostId = data.host;
 
@@ -92,9 +104,40 @@ export class Game {
 		});
 	}
 
+	public startRoom() {
+		if (this.isHost() === false) {
+			throw new Error('you have to be the host to start the game');
+		}
+
+		this.socket!.sendEvent({ type: 'startGame' });
+	}
+
+	public startTurn() {
+		if (this.isSpeaker() === false) {
+			throw new Error('you have to be the speaker to start the turn');
+		}
+
+		this.socket!.sendEvent({ type: 'startTurn' });
+	}
+
 	private registerEventHandlers() {
 		this.socket?.on('playerJoin', (data: any) => {
 			this.wPlayers.set(data.players);
+		});
+
+		this.socket?.on('stateUpdate', (data: any) => {
+			const state = data.state as GameState;
+			this.gameState.set(state);
+
+			switch (state) {
+				case GameState.TeamsRecap:
+					this.wPlayers.set(data.players);
+					break;
+
+				case GameState.WaitTurnStart:
+					this.speaker = data.speaker;
+					break;
+			}
 		});
 	}
 
@@ -129,10 +172,16 @@ export class Game {
 		return this.hostId !== undefined && this.hostId === this.credentials?.id;
 	}
 
-	private errorIfNotConnected() {
-		if (this.socket === undefined) {
-			throw new Error('the websocket is not connected');
-		}
+	public isSpeaker() {
+		return this.speaker !== undefined && this.speaker.id === this.credentials?.id;
+	}
+
+	public getTeam() {
+		return this.team;
+	}
+
+	public getSpeaker() {
+		return this.speaker ?? { id: '', username: '', team: Team.UNDEFINED };
 	}
 }
 
