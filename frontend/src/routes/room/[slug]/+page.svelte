@@ -8,20 +8,21 @@
 	import TeamView from '@/views/TeamView.svelte';
 	import PreTurnView from '@/views/PreTurnView.svelte';
 	import SpeakerView from '@/views/SpeakerView.svelte';
-    import { goto } from '$app/navigation';
-import SpectatorView from '@/views/SpectatorView.svelte';
-import TurnRecapView from '@/views/TurnRecapView.svelte';
+	import { goto } from '$app/navigation';
+	import SpectatorView from '@/views/SpectatorView.svelte';
+	import TurnRecapView from '@/views/TurnRecapView.svelte';
+    import ScoreView from '@/views/ScoreView.svelte';
 
 	const roomId = $page.params.slug;
 	const gameState = game.state();
-	const { players, cards } = game;
+	const { players, cards, scores } = game;
 
 	let showQrCode = false;
 
 	onMount(() => {
-        if ($gameState === GameState.NotConnected) {
-            goto(`/joinRoom/${roomId}`)
-        }
+		if ($gameState === GameState.NotConnected) {
+			goto(`/joinRoom/${roomId}`);
+		}
 
 		if ($gameState === GameState.WaitingRoom) {
 			if (game.isHost()) {
@@ -58,9 +59,11 @@ import TurnRecapView from '@/views/TurnRecapView.svelte';
 			on:passCard={() => game.passCard()}
 			on:validateCard={() => game.validateCard()}
 		/>
-    {:else}
-        <SpectatorView cards={$cards} team={game.getSpeaker().team}/>
+	{:else}
+		<SpectatorView cards={$cards} team={game.getSpeaker().team} />
 	{/if}
 {:else if $gameState === GameState.TurnRecap}
-    <TurnRecapView wasSpeaker={game.isSpeaker()} team={game.getSpeaker().team} cards={$cards}/>
+    <TurnRecapView wasSpeaker={game.isSpeaker()} team={game.getSpeaker().team} cards={$cards} on:handOver={() => game.handOver()} />
+{:else if $gameState === GameState.ScoreRecap}
+    <ScoreView scores={$scores} isHost={game.isHost()} on:nextClick={() => game.nextRound()}/>
 {/if}

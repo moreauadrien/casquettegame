@@ -5,7 +5,7 @@ import type { Writable, Readable } from 'svelte/store';
 import { get } from 'svelte/store';
 import { writable, derived } from 'svelte/store';
 import type { PlayerInfos } from './api';
-import { Team } from './utils';
+import { Team, type TeamPoints } from './utils';
 
 export const enum GameState {
 	NotConnected = 'notConnected',
@@ -33,6 +33,9 @@ export class Game {
 	private wCards: Writable<string[]>;
 	public cards: Readable<string[]>;
 
+	private wScores: Writable<TeamPoints[]>;
+	public scores: Readable<TeamPoints[]>;
+
 	private speaker?: PlayerInfos;
 
 	public constructor() {
@@ -46,6 +49,9 @@ export class Game {
 
 		this.wCards = writable([]);
 		this.cards = derived(this.wCards, (s) => s);
+
+		this.wScores = writable([]);
+		this.scores = derived(this.wScores, (s) => s);
 	}
 
 	public createRoom() {
@@ -148,6 +154,14 @@ export class Game {
 		}
 	}
 
+	public handOver() {
+		if (this.isSpeaker() === false) {
+			throw new Error("you can't hand over when you are not the speaker");
+		}
+
+		this.socket!.sendEvent({ type: 'handOver' });
+	}
+
 	public validateCard() {
 		if (this.isSpeaker() === false) {
 			throw new Error("you can't validate card if you are not the speaker");
@@ -161,6 +175,10 @@ export class Game {
 
 			this.socket!.sendEvent({ type: 'validateCard', data: { cards: get(this.cards)[0] } });
 		}
+	}
+
+	public nextRound() {
+		this.socket!.sendEvent({ type: 'nextRound' });
 	}
 
 	private registerEventHandlers() {
@@ -179,10 +197,16 @@ export class Game {
 
 				case GameState.WaitTurnStart:
 					this.speaker = data.speaker;
+					this.wCards.set([]);
 					break;
 
 				case GameState.TurnRecap:
-					this.wCards.set(data.cards);
+					this.wCards.set(data.cards ?? []);
+					break;
+
+				case GameState.ScoreRecap:
+					this.roundNumber++;
+					this.wScores.set(data.scores);
 					break;
 			}
 		});
@@ -233,6 +257,10 @@ export class Game {
 
 	public getSpeaker() {
 		return this.speaker ?? { id: '', username: '', team: Team.UNDEFINED };
+	}
+
+	public getRoundNumber() {
+		return this.roundNumber;
 	}
 }
 

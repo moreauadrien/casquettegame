@@ -8,6 +8,11 @@ export const enum Team {
 	YELLOW = 'yellow',
 }
 
+export type TeamPoints = {
+	team: Team;
+	points: number[];
+};
+
 export function generateToken() {
 	const preShuffled = uuidv4().replaceAll('-', '');
 	return preShuffled

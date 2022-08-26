@@ -34,11 +34,17 @@ type TurnUpdate struct {
 	Cards []string `json:"cards,omitempty"`
 }
 
+type TeamPoints struct {
+	Team   TeamColor `json:"team"`
+	Points []int     `json:"points"`
+}
+
 type StateUpdateData struct {
 	State   string        `json:"state"`
 	Players []PlayerInfos `json:"players,omitempty"`
 	Speaker *PlayerInfos  `json:"speaker,omitempty"`
 	Cards   []string      `json:"cards,omitempty"`
+	Scores  []TeamPoints  `json:"scores,omitempty"`
 }
 
 type GenericEvent struct {

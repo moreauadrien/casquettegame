@@ -2,8 +2,6 @@ package game
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	"timesup/events"
 	"timesup/payloads"
 	"timesup/ws"
@@ -11,17 +9,6 @@ import (
 
 var rooms = map[string]*Room{}
 var players = map[string]*Player{}
-
-var cards = loadCards()
-
-func loadCards() []string {
-	data, err := os.ReadFile("cards.txt")
-	if err != nil {
-		panic(err)
-	}
-
-	return strings.Split(string(data), "\n")
-}
 
 func InitWsHandlers(wrapper ws.Wrapper) {
 	wrapper.On("create", func(c ws.Client, cred payloads.Credentials, ed events.EventData) *events.ResponseData {
@@ -253,6 +240,74 @@ func InitWsHandlers(wrapper ws.Wrapper) {
 		}
 
 		r.PassCard()
+
+		return &events.ResponseData{
+			Status: "success",
+		}
+	})
+
+	wrapper.On("handOver", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
+		p := players[creds.Token]
+		if p == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "this player does not exist",
+			}
+		}
+
+		r := p.Room
+		if r == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not in a room",
+			}
+		}
+
+		if r.speaker.Token != p.Token {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is currently not the speaker",
+			}
+		}
+
+		r.ChangeSpeaker()
+
+		if r.remainingCards.Len() == 0 {
+			r.SetState(ScoreRecap)
+		} else {
+			r.SetState(WaitTurnStart)
+		}
+
+		return &events.ResponseData{
+			Status: "success",
+		}
+	})
+
+	wrapper.On("nextRound", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
+		p := players[creds.Token]
+		if p == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "this player does not exist",
+			}
+		}
+
+		r := p.Room
+		if r == nil {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not in a room",
+			}
+		}
+
+		if r.host.Token != p.Token {
+			return &events.ResponseData{
+				Status:  "error",
+				Message: "player is not the host of his room",
+			}
+		}
+
+		r.StartNextRound()
 
 		return &events.ResponseData{
 			Status: "success",

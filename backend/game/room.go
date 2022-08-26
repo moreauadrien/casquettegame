@@ -26,14 +26,17 @@ type Room struct {
 	host  *Player
 	state GameState
 
-	players []*Player
-	teams   [2]Team
-	speaker *Player
+	players       []*Player
+	teams         [2]Team
+	speaker       *Player
+	speakerNumber int
 
 	guessedCards     []string
 	turnGuessedCards []string
 	remainingCards   *structures.CardPile
 	roundEndSignal   chan struct{}
+
+	round int
 }
 
 func NewRoom(host *Player) *Room {
@@ -45,6 +48,7 @@ func NewRoom(host *Player) *Room {
 		teams:          [2]Team{newTeam(BLUE), newTeam(PURPLE)},
 		guessedCards:   make([]string, 0, 40),
 		remainingCards: &structures.CardPile{},
+		round:          1,
 	}
 
 	r.addPlayerToSmallestTeam(host)
@@ -121,7 +125,7 @@ func (r *Room) SetState(state GameState) {
 		r.roundEndSignal = make(chan struct{})
 		go func() {
 			select {
-			case <-time.After(5 * time.Second):
+			case <-time.After(30 * time.Second):
 				r.SetState(TurnRecap)
 
 			case <-r.roundEndSignal:
@@ -134,7 +138,34 @@ func (r *Room) SetState(state GameState) {
 			State: string(state),
 			Cards: r.turnGuessedCards,
 		})
+
+	case ScoreRecap:
+		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
+			State:  string(state),
+			Scores: r.Scores(),
+		})
 	}
+
+}
+
+func (r *Room) StartNextRound() {
+	r.round++
+	r.remainingCards.Add(Shuffle(r.guessedCards)...)
+	r.guessedCards = make([]string, 0, 40)
+	r.SetState(WaitTurnStart)
+}
+
+func (r *Room) Scores() []events.TeamPoints {
+	s := make([]events.TeamPoints, 0, 2)
+
+	for _, t := range r.teams {
+		s = append(s, events.TeamPoints{
+			Team:   t.Color(),
+			Points: t.Points(),
+		})
+	}
+
+	return s
 }
 
 func (r *Room) ValidateCard() {
@@ -142,6 +173,8 @@ func (r *Room) ValidateCard() {
 
 	r.guessedCards = append(r.guessedCards, c.Value())
 	r.turnGuessedCards = append(r.turnGuessedCards, c.Value())
+
+	r.speaker.team.IncrementRoundScore(r.round)
 
 	r.BrodcastEvent("turnUpdate", events.TurnUpdate{Cards: r.turnGuessedCards}, r.speaker)
 
@@ -155,6 +188,13 @@ func (r *Room) PassCard() {
 	r.remainingCards.Add(c.Value())
 }
 
+func (r *Room) ChangeSpeaker() {
+	r.speakerNumber++
+	t := r.teams[r.speakerNumber%2]
+
+	r.speaker = t.GetPlayer(r.speakerNumber / 2)
+}
+
 func (r *Room) Start() error {
 
 	if r.state != WaitingRoom {
@@ -162,7 +202,7 @@ func (r *Room) Start() error {
 	}
 
 	r.SetState(TeamsRecap)
-	r.remainingCards.Add(cards[0:40]...)
+	r.remainingCards.Add(RandomCards(40)...)
 
 	r.speaker = r.host
 

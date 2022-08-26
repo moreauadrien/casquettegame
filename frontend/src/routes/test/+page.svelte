@@ -1,10 +1,9 @@
 <script>
-    import SpectatorView from "@/views/SpectatorView.svelte";
     import { username } from "@/stores";
-    import { Team } from "@/utils";
+import ScoreView from "@/views/ScoreView.svelte";
 
     username.set("Adrien")
 
 </script>
 
-<SpectatorView team={Team.BLUE} cards={["Adrien"]}/>
+<ScoreView />
