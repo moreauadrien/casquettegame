@@ -1,9 +1,6 @@
 <script>
-    import { username } from "@/stores";
-import ScoreView from "@/views/ScoreView.svelte";
-
-    username.set("Adrien")
+import WaitView from "@/views/WaitView.svelte";
 
 </script>
 
-<ScoreView />
+<WaitView username="Adrien" />

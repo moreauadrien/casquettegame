@@ -1,6 +1,6 @@
 <script lang="ts">
-    export let url: string
-    
+	export let url: string;
+
 	import Button from '@/components/Button.svelte';
 	import QrCode from '@/components/QrCode.svelte';
 	import { createEventDispatcher } from 'svelte';
@@ -22,7 +22,7 @@
 		<QrCode data={url} size={250} />
 	</div>
 
-	<div class="flex justify-center absolute bottom-28 w-full">
+	<div class="flex justify-center w-full">
 		<Button on:click={handleClick} className="px-8 py-4">Next</Button>
 	</div>
 </div>

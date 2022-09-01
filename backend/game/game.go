@@ -2,274 +2,192 @@ package game
 
 import (
 	"fmt"
-	"timesup/events"
-	"timesup/payloads"
-	"timesup/ws"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 var rooms = map[string]*Room{}
 var players = map[string]*Player{}
 
-func InitWsHandlers(wrapper ws.Wrapper) {
-	wrapper.On("create", func(c ws.Client, cred payloads.Credentials, ed events.EventData) *events.ResponseData {
-		p := players[cred.Token]
-		if p == nil {
-			p = &Player{
-				Id:       cred.Id,
-				Token:    cred.Token,
-				Username: cred.Username,
-				Client:   &c,
-			}
-		}
+type CreateRoomPayload struct {
+	Username string `json:"username" binding:"required,min=4"`
+}
 
-		players[p.Token] = p
+type JoinRoomPayload struct {
+	Username string `json:"username" binding:"required,min=4"`
+	RoomId   string `json:"roomId" binding:"required,uuid4_rfc4122"`
+}
 
-		r := p.Room
-		if r != nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is already in a room",
-			}
-		}
+type ErrorResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
 
-		r = NewRoom(p)
-		rooms[r.Id] = r
+type CreateRoomSuccess struct {
+	Status string `json:"status"`
+	RoomId string `json:"roomId"`
+}
 
-		p.Room = r
+type JoinRoomSuccess struct {
+	Status string `json:"status"`
+}
 
-		return &events.ResponseData{
-			Status:  "success",
-			RoomId:  r.Id,
-			Team:    p.team.Color(),
-			Players: r.ListPlayers(),
-		}
+func CreateRoomHandler(c *gin.Context) {
+	var payload CreateRoomPayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{
+			Status:  "error",
+			Message: "username must contain at least 4 characters",
+		})
+		return
+	}
+
+	p := NewPlayer(payload.Username)
+	r := NewRoom(p)
+
+	c.SetCookie("token", p.Token, 2*3600, "/", "", false, true)
+
+	c.JSON(http.StatusOK, CreateRoomSuccess{
+		Status: "ok",
+		RoomId: r.Id,
 	})
+}
 
-	wrapper.On("join", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-		data, ok := ed.(*events.JoinData)
-		if !ok {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "event data is not of type *JoinData",
-			}
+func JoinRoomHandler(c *gin.Context) {
+	var payload JoinRoomPayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		var m string
+		if len(payload.Username) < 4 {
+			m = "username must contain at least 4 characters"
+		} else {
+			m = "roomId must be uuid4_rfc4122"
 		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{
+			Status:  "error",
+			Message: m,
+		})
+		return
+	}
 
-		p := players[creds.Token]
-		if p == nil {
-			p = &Player{
-				Id:       creds.Id,
-				Token:    creds.Token,
-				Username: creds.Username,
-				Client:   &c,
-			}
-		}
+	r := rooms[payload.RoomId]
+	if r == nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("room %v does not exist", payload.RoomId),
+		})
+		return
+	}
 
-		players[p.Token] = p
+	if r.state != WaitingRoom {
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("room %v has already stated", payload.RoomId),
+		})
+		return
+	}
 
-		r := p.Room
-		if r != nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is already in a room",
-			}
-		}
+	if r.usernameSet.Has(payload.Username) {
+		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("the username %v is already taken", payload.Username),
+		})
+		return
+	}
 
-		r = rooms[data.RoomId]
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: fmt.Sprintf("room #%v does not exist", data.RoomId),
-			}
-		}
+	p := NewPlayer(payload.Username)
+	r.AddPlayer(p)
 
-		if r.state != WaitingRoom {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: fmt.Sprintf("room #%v has already started", r.Id),
-			}
-		}
+	r.Brodcast(gin.H{"players": r.Players()}, p)
 
-		r.AddPlayer(p)
-		p.Room = r
+	c.SetCookie("token", p.Token, 2*3600, "/", "", false, true)
 
-		return &events.ResponseData{
-			Status:  "success",
-			Host:    r.host.Id,
-			Players: r.ListPlayers(),
-			Team:    p.team.Color(),
-		}
+	c.JSON(http.StatusOK, JoinRoomSuccess{
+		Status: "ok",
 	})
+}
 
-	wrapper.On("startGame", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-		p := players[creds.Token]
-		if p == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "this player does not exist",
-			}
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func WsHandler(c *gin.Context) {
+	token, _ := c.Cookie("token")
+	p := players[token]
+	if p == nil {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Printf("Failed to set websocket upgrade: %+v", err)
+		return
+	}
+
+	p.Conn = conn
+
+	p.SendFullState()
+
+	for {
+		t, msg, err := conn.ReadMessage()
+
+		if err != nil {
+			break
 		}
 
-		r := p.Room
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not in a room",
-			}
+		handleIncomingMessage(p, t, msg)
+	}
+}
+
+func handleIncomingMessage(p *Player, msgType int, msg []byte) {
+	if msgType != websocket.TextMessage {
+		log.Printf("message type %v is not supported", msgType)
+		return
+	}
+
+	r := p.Room
+
+	switch string(msg) {
+	case "startGame":
+		if p.IsHost() == false || r.state != WaitingRoom {
+			return
 		}
 
-		if r.host.Token != p.Token {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not the host of his room",
-			}
-		}
+		r.Start()
 
-		if err := r.Start(); err != nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: err.Error(),
-			}
-		}
-
-		return &events.ResponseData{
-			Status: "success",
-		}
-	})
-
-	wrapper.On("startTurn", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-		p := players[creds.Token]
-		if p == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "this player does not exist",
-			}
-		}
-
-		r := p.Room
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not in a room",
-			}
-		}
-
-		if r.speaker.Token != p.Token {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is currently not the speaker",
-			}
+	case "startTurn":
+		if p.IsSpeaker() == false || r.state != WaitTurnStart {
+			return
 		}
 
 		r.SetState(Turn)
 
-		return &events.ResponseData{
-			Status: "success",
-			Cards:  r.remainingCards,
-		}
-	})
-
-	wrapper.On("validateCard", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-
-		p := players[creds.Token]
-		if p == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "this player does not exist",
-			}
-		}
-
-		r := p.Room
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not in a room",
-			}
-		}
-
-		if r.speaker.Token != p.Token {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is currently not the speaker",
-			}
-		}
-
-		if r.state != Turn {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "the turn is over",
-			}
+	case "validateCard":
+		if p.IsSpeaker() == false || r.state != Turn {
+			return
 		}
 
 		r.ValidateCard()
 
-		return &events.ResponseData{
-			Status: "success",
-		}
-	})
-
-	wrapper.On("passCard", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-
-		p := players[creds.Token]
-		if p == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "this player does not exist",
-			}
-		}
-
-		r := p.Room
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not in a room",
-			}
-		}
-
-		if r.speaker.Token != p.Token {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is currently not the speaker",
-			}
-		}
-
-		if r.state != Turn {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "the turn is over",
-			}
+	case "passCard":
+		if p.IsSpeaker() == false || r.state != Turn {
+			return
 		}
 
 		r.PassCard()
 
-		return &events.ResponseData{
-			Status: "success",
-		}
-	})
-
-	wrapper.On("handOver", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-		p := players[creds.Token]
-		if p == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "this player does not exist",
-			}
-		}
-
-		r := p.Room
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not in a room",
-			}
-		}
-
-		if r.speaker.Token != p.Token {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is currently not the speaker",
-			}
-		}
-
+	case "handOver":
 		r.ChangeSpeaker()
 
 		if r.remainingCards.Len() == 0 {
@@ -278,39 +196,56 @@ func InitWsHandlers(wrapper ws.Wrapper) {
 			r.SetState(WaitTurnStart)
 		}
 
-		return &events.ResponseData{
-			Status: "success",
-		}
-	})
-
-	wrapper.On("nextRound", func(c ws.Client, creds payloads.Credentials, ed events.EventData) *events.ResponseData {
-		p := players[creds.Token]
-		if p == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "this player does not exist",
-			}
-		}
-
-		r := p.Room
-		if r == nil {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not in a room",
-			}
-		}
-
-		if r.host.Token != p.Token {
-			return &events.ResponseData{
-				Status:  "error",
-				Message: "player is not the host of his room",
-			}
+	case "startNextRound":
+		if p.IsHost() == false || r.state != ScoreRecap {
+			return
 		}
 
 		r.StartNextRound()
 
-		return &events.ResponseData{
-			Status: "success",
+	case "acceptRules":
+		if p.IsHost() == false || r.state != RulesRecap {
+			return
 		}
-	})
+
+		r.SetState(WaitTurnStart)
+
+	case "validateCardSwitch":
+		if r.state != CardSelection || p.Cards == nil {
+			return
+		}
+
+		r.remainingCards.Add(p.Cards.Selected...)
+		p.Cards = nil
+
+		if r.remainingCards.Len() == 40 {
+			r.SetState(RulesRecap)
+		} else {
+			data := gin.H{"state": "waitPlayers", "cards": []string{}, "swapsRemaining": 0}
+			p.SendMessage(data)
+		}
+
+	default:
+		if strings.HasPrefix(string(msg), "changeCard:") {
+			s := strings.Split(string(msg), ":")
+			if len(s) < 2 {
+				return
+			}
+
+			i64, err := strconv.ParseInt(s[1], 10, 32)
+			if err != nil {
+				return
+			}
+
+			i := int(i64)
+
+			if p.Cards != nil && len(p.Cards.Stock) > 0 && len(p.Cards.Selected) > i {
+				p.Cards.Selected[i] = p.Cards.Stock[0]
+				p.Cards.Stock = p.Cards.Stock[1:]
+				p.SendCardsToSelect()
+			}
+		}
+
+	}
+
 }

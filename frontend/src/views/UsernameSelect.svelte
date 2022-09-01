@@ -7,7 +7,7 @@
 
 	const dispatch = createEventDispatcher<{ submit: string }>();
 
-	let username = 'Mickey';
+	let username = '';
 
 	function handleClick() {
 		dispatch('submit', username);

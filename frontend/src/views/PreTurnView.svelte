@@ -4,11 +4,11 @@
 	import PlayerTag from '@/components/PlayerTag.svelte';
 
 	import TeamTag from '@/components/TeamTag.svelte';
-    import { username } from '@/stores';
     import { createEventDispatcher } from 'svelte';
 
 	export let isSpeaker: boolean;
 	export let speaker: PlayerInfos;
+    export let username: string
 
     const dispatch = createEventDispatcher()
 
@@ -18,7 +18,7 @@
 </script>
 
 <div class="flex flex-col justify-center">
-    <p class="mt-14 text-center font-inter font-medium text-2xl">{$username}</p>
+    <p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
 	<p class="mt-3 text-center font-inter font-medium text-4xl">Première<br />manche</p>
 	<p class="mt-20 text-center font-inter font-medium text-2xl">C'est au tour de :</p>
 

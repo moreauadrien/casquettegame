@@ -1,95 +1,39 @@
-import { generateId } from './utils';
-
-import Joi from 'joi';
-
-interface Event {
-	type: string;
-	to?: string;
-	data?: object;
-}
-
-export interface Payload {
-	event: Event;
-	messageId?: string;
-}
-
-const payloadSchema = Joi.object({
-	event: {
-		type: Joi.string().required(),
-		to: Joi.string(),
-		data: Joi.object(),
-	},
-	messageId: Joi.string(),
-});
-
-export type EventHandler = (data: any) => object | void;
-export type ResponseHandler = ((data: any) => void) | (() => void);
+import type { Result } from 'ts-results';
+import { Err, Ok } from 'ts-results';
 
 const WEBSOCKET_URL = `ws://${window.location.host}/ws`;
 
-export type Credentials = {
-	username: string;
-	token: string;
-	id: string;
-};
+export type EventHandler = (data: any) => void;
 
 export class WsClient {
 	private socket?: WebSocket;
-	private credentials: Credentials;
-
 	private eventHandlers: Map<string, EventHandler>;
-	private responseHandlers: Map<string, ResponseHandler>;
 
-	public constructor(credentials: Credentials) {
-		this.credentials = credentials;
+	public constructor() {
 		this.eventHandlers = new Map<string, EventHandler>();
-		this.responseHandlers = new Map<string, ResponseHandler>();
 	}
 
 	public connect() {
 		this.socket = new WebSocket(WEBSOCKET_URL);
 
-		return new Promise<string>((resolve, reject) => {
+		return new Promise<Result<null, Error>>((resolve) => {
 			const onOpen = () => {
 				this.socket!.removeEventListener('open', onOpen);
 				this.socket!.removeEventListener('error', onError);
 
 				this.setupHandlers();
 
-				resolve('connected');
+				resolve(Ok(null));
 			};
 
 			const onError = () => {
 				this.socket = undefined;
-				reject('failed to connect');
+				resolve(Err(new Error('failed to connect')));
 			};
 
 			this.socket!.addEventListener('open', onOpen);
 			this.socket!.addEventListener('error', onError);
 		});
-	}
-
-	public sendEvent(event: Event, handler?: ResponseHandler) {
-		if (this.socket === undefined) throw new Error('websocket is not connected');
-
-		let payload;
-
-		if (event.type === 'response') {
-			payload = {
-				event,
-			};
-		} else {
-			const messageId = generateId();
-			payload = {
-				messageId,
-				credentials: this.credentials,
-				event,
-			};
-
-			if (handler !== undefined) this.onResponse(messageId, handler);
-		}
-
-		this.socket.send(JSON.stringify(payload));
 	}
 
 	public on(eventName: string, handler: EventHandler) {
@@ -101,17 +45,8 @@ export class WsClient {
 		this.eventHandlers.set(eventName, handler);
 	}
 
-	private onResponse(responseId: string, handler: ResponseHandler) {
-		const handlerAlreadyExist = this.responseHandlers.has(responseId);
-		if (handlerAlreadyExist) {
-			throw new Error('this event already has an handler');
-		}
-
-		this.responseHandlers.set(responseId, handler);
-
-		setTimeout(() => {
-			this.responseHandlers.delete(responseId);
-		}, 5000);
+	public sendMessage(message: string) {
+		this.socket?.send(message);
 	}
 
 	private setupHandlers() {
@@ -120,66 +55,24 @@ export class WsClient {
 		this.setupCloseHandler();
 	}
 
-	private runEventHandler(payload: Payload) {
-		if (payload.messageId === undefined) {
-			throw new Error('"messageId" field is required');
-		}
-
-		const handler = this.eventHandlers.get(payload.event.type);
-
-		if (handler !== undefined) {
-			const responseData = handler(payload.event.data);
-
-			if (responseData !== undefined) {
-				const responseEvent = {
-					type: 'response',
-					to: payload.messageId,
-					data: responseData,
-				};
-
-				this.sendEvent(responseEvent);
-			}
-		}
-	}
-
-	private runResponseHandler(payload: Payload) {
-		if (payload.event.to === undefined) {
-			throw new Error('"to" field is required on a response event');
-		}
-
-		const handler = this.responseHandlers.get(payload.event.to!);
-		this.responseHandlers.delete(payload.event.to!);
-
-		if (handler !== undefined) {
-			handler(payload.event.data);
-		}
-	}
-
 	private setupMessageHandler() {
 		this.socket!.addEventListener('message', (e) => {
-			const rawPayload = JSON.parse(e.data);
+			console.log(e);
+			const handler = this.eventHandlers.get('stateUpdate');
 
-			const value = payloadSchema.validate(rawPayload);
-			if (value.error !== undefined) {
-				throw new Error(value.error.message);
-			}
-
-			const payload = <Payload>rawPayload;
-
-			if (payload.event.type === 'response') {
-				this.runResponseHandler(payload);
-			} else {
-				this.runEventHandler(payload);
+			if (handler !== undefined) {
+				handler(JSON.parse(e.data));
 			}
 		});
 	}
 
 	private setupErrorHandler() {
-		this.socket!.addEventListener('error', (e) => {});
+		this.socket!.addEventListener('error', console.log);
 	}
 
 	private setupCloseHandler() {
 		this.socket!.addEventListener('close', (e) => {
+			console.log(e);
 			this.socket = undefined;
 		});
 	}

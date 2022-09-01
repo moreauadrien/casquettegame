@@ -89,3 +89,21 @@ func RandomCards(n int) []string {
 
 	return c
 }
+
+func partitionCards(cards []string, n int) [][]string {
+	l := len(cards)
+	partitions := make([][]string, 0, n)
+
+	for i := 0; i < n; i++ {
+		p := make([]string, 0, l/(n-i))
+
+		for cap(p) > len(p) {
+			p = append(p, cards[l-1])
+			l--
+		}
+
+		partitions = append(partitions, p)
+	}
+
+	return partitions
+}

@@ -1,33 +1,27 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-
 	import { page } from '$app/stores';
-	import { game, GameState } from '@/game';
-    import { username, token, playerId } from '@/stores';
+    import { joinRoom } from '@/api';
 	import UsernameSelect from '@/views/UsernameSelect.svelte';
 
 	const roomId = $page.params.slug;
-	const gameState = game.state();
 
-	$: {
-		if ($gameState !== GameState.NotConnected) {
-			goto(`/room/${game.getRoomId()}`);
-		}
-	}
+    let error = ''
 
-    async function handleUsernameSubmit(e: CustomEvent<string>) {
-        username.set(e.detail)
+    async function handleSubmit(e: CustomEvent<string>) {
+        const result = await joinRoom(e.detail, roomId)
 
-        try {
-            await game.connect({username: $username, token: $token, id: $playerId})
-            await game.joinRoom(roomId)
-        } catch (e) {
-            console.log(e)
+        if (result.err) {
+            error = result.val.message
+        } else {
+            goto(`/room/${roomId}`)
         }
     }
 </script>
 
+<p>{error}</p>
+
 <UsernameSelect
-	on:submit={handleUsernameSubmit}
+	on:submit={handleSubmit}
 	title="Rejoins une partie"
 />

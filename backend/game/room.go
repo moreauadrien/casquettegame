@@ -1,18 +1,20 @@
 package game
 
 import (
-	"fmt"
+	"math/rand"
 	"time"
-	"timesup/events"
 	"timesup/structures"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 type GameState string
 
 const (
 	WaitingRoom   GameState = "waitingRoom"
+	CardSelection GameState = "cardSelection"
 	TeamsRecap    GameState = "teamsRecap"
 	RulesRecap    GameState = "rulesRecap"
 	WaitTurnStart GameState = "waitTurnStart"
@@ -31,10 +33,14 @@ type Room struct {
 	speaker       *Player
 	speakerNumber int
 
+	usernameSet structures.Set
+
 	guessedCards     []string
 	turnGuessedCards []string
 	remainingCards   *structures.CardPile
 	roundEndSignal   chan struct{}
+
+	cardPartitions [][]string
 
 	round int
 }
@@ -43,15 +49,18 @@ func NewRoom(host *Player) *Room {
 	r := &Room{
 		Id:             uuid.NewString(),
 		host:           host,
-		players:        []*Player{host},
+		players:        []*Player{},
 		state:          WaitingRoom,
 		teams:          [2]Team{newTeam(BLUE), newTeam(PURPLE)},
 		guessedCards:   make([]string, 0, 40),
 		remainingCards: &structures.CardPile{},
 		round:          1,
+		usernameSet:    structures.Set{},
 	}
 
-	r.addPlayerToSmallestTeam(host)
+	r.AddPlayer(host)
+
+	rooms[r.Id] = r
 
 	return r
 }
@@ -67,60 +76,86 @@ func (r *Room) addPlayerToSmallestTeam(p *Player) {
 }
 
 func (r *Room) AddPlayer(p *Player) {
-	r.addPlayerToSmallestTeam(p)
-
-	playerList := append(r.ListPlayers(), *p.GetInfos())
-	r.BrodcastEvent("playerJoin", struct {
-		Players []events.PlayerInfos `json:"players"`
-	}{Players: playerList})
-
+	p.Room = r
+	r.usernameSet.Add(p.Username)
 	r.players = append(r.players, p)
+
+	r.addPlayerToSmallestTeam(p)
 }
 
-func (r *Room) BrodcastEvent(eventType string, eventData events.EventData, except ...*Player) {
-	exceptSet := make(map[*Player]bool, len(except))
+func (r Room) Players() []*PlayerInfos {
+	infos := make([]*PlayerInfos, 0, len(r.players))
+	for _, p := range r.players {
+		infos = append(infos, p.Infos())
+	}
+
+	return infos
+}
+
+func (r Room) GetFullRoomState() gin.H {
+	return gin.H{
+		"state":   r.state,
+		"host":    r.host.Infos(),
+		"speaker": r.speaker.Infos(),
+		"players": r.Players(),
+		"round":   r.round,
+	}
+}
+
+func (r *Room) Brodcast(data gin.H, except ...*Player) {
+	exceptSet := make(structures.Set, len(except))
+
 	for _, p := range except {
-		exceptSet[p] = true
+		exceptSet.Add(p.Token)
 	}
 
 	for _, p := range r.players {
-		if exceptSet[p] == false {
-			p.SendEvent(eventType, eventData, nil)
+		if exceptSet.Has(p.Token) == false {
+			p.SendMessage(data)
 		}
 	}
 }
 
-func (r *Room) ListPlayers() []events.PlayerInfos {
-	list := make([]events.PlayerInfos, 0, len(r.players))
-
-	for _, p := range r.players {
-		list = append(list, *p.GetInfos())
-	}
-
-	return list
-}
-
 func (r *Room) SetState(state GameState) {
 	r.state = state
+
+	data := gin.H{"state": state}
+
 	switch state {
 	case TeamsRecap:
-		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
-			State:   string(state),
-			Players: r.ListPlayers(),
-		})
+		for _, p := range r.players {
+			p.SendMessage(gin.H{"state": state, "team": p.team.Color()})
+		}
+
+		go func() {
+			time.Sleep(2 * time.Second)
+			r.SetState(CardSelection)
+		}()
+
+	case CardSelection:
+		for i, p := range r.players {
+			cards := r.cardPartitions[i]
+
+			p.Cards = &PlayerCards{Selected: cards[:len(cards)-3], Stock: cards[len(cards)-3:]}
+			p.SendCardsToSelect()
+		}
+
+	case RulesRecap:
+		data["round"] = r.round
+		r.Brodcast(data)
 
 	case WaitTurnStart:
-		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
-			State:   string(state),
-			Speaker: r.speaker.GetInfos(),
-		})
+		data["round"] = r.round
+		data["speaker"] = r.speaker.Infos()
+		data["cards"] = []string{}
+		r.Brodcast(data)
 
 	case Turn:
 		r.turnGuessedCards = make([]string, 0, len(r.guessedCards))
+		r.Brodcast(data, r.speaker)
+		data["cards"] = r.remainingCards
 
-		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
-			State: string(state),
-		}, r.speaker)
+		r.speaker.SendMessage(data)
 
 		r.roundEndSignal = make(chan struct{})
 		go func() {
@@ -134,38 +169,49 @@ func (r *Room) SetState(state GameState) {
 		}()
 
 	case TurnRecap:
-		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
-			State: string(state),
-			Cards: r.turnGuessedCards,
-		})
+		data["cards"] = r.turnGuessedCards
+		r.Brodcast(data)
 
 	case ScoreRecap:
-		r.BrodcastEvent("stateUpdate", events.StateUpdateData{
-			State:  string(state),
-			Scores: r.Scores(),
-		})
+		data["score"] = r.Score()
+		r.Brodcast(data)
+
+		if r.round == 3 {
+			r.Close()
+		}
 	}
-
 }
 
-func (r *Room) StartNextRound() {
-	r.round++
-	r.remainingCards.Add(Shuffle(r.guessedCards)...)
-	r.guessedCards = make([]string, 0, 40)
-	r.SetState(WaitTurnStart)
-}
-
-func (r *Room) Scores() []events.TeamPoints {
-	s := make([]events.TeamPoints, 0, 2)
+func (r *Room) Score() []TeamPoints {
+	s := make([]TeamPoints, 0, 2)
 
 	for _, t := range r.teams {
-		s = append(s, events.TeamPoints{
+		s = append(s, TeamPoints{
 			Team:   t.Color(),
 			Points: t.Points(),
 		})
 	}
 
 	return s
+}
+
+func (r *Room) ChangeSpeaker() {
+	r.speakerNumber++
+	t := r.teams[r.speakerNumber%2]
+
+	r.speaker = t.GetPlayer(r.speakerNumber / 2)
+}
+
+func (r *Room) Start() {
+	r.speakerNumber = rand.Intn(len(r.players))
+	r.ChangeSpeaker()
+
+	cards := RandomCards(40 + 3*len(r.players))
+	r.cardPartitions = partitionCards(cards, len(r.players))
+
+	r.remainingCards = &structures.CardPile{}
+
+	r.SetState(TeamsRecap)
 }
 
 func (r *Room) ValidateCard() {
@@ -176,7 +222,7 @@ func (r *Room) ValidateCard() {
 
 	r.speaker.team.IncrementRoundScore(r.round)
 
-	r.BrodcastEvent("turnUpdate", events.TurnUpdate{Cards: r.turnGuessedCards}, r.speaker)
+	r.Brodcast(gin.H{"cards": r.turnGuessedCards}, r.speaker)
 
 	if r.remainingCards.Len() == 0 {
 		close(r.roundEndSignal)
@@ -188,28 +234,20 @@ func (r *Room) PassCard() {
 	r.remainingCards.Add(c.Value())
 }
 
-func (r *Room) ChangeSpeaker() {
-	r.speakerNumber++
-	t := r.teams[r.speakerNumber%2]
-
-	r.speaker = t.GetPlayer(r.speakerNumber / 2)
+func (r *Room) StartNextRound() {
+	r.round++
+	r.remainingCards.Add(Shuffle(r.guessedCards)...)
+	r.guessedCards = make([]string, 0, 40)
+	r.SetState(RulesRecap)
 }
 
-func (r *Room) Start() error {
+func (r *Room) Close() {
+	for _, p := range r.players {
+		delete(players, p.Token)
 
-	if r.state != WaitingRoom {
-		return fmt.Errorf("room #%v has already started", r.Id)
+		p.Conn.WriteMessage(websocket.CloseMessage, []byte("  gameOver  "))
+		p.Conn.Close()
 	}
 
-	r.SetState(TeamsRecap)
-	r.remainingCards.Add(RandomCards(40)...)
-
-	r.speaker = r.host
-
-	go func() {
-		time.Sleep(1 * time.Second)
-		r.SetState(WaitTurnStart)
-	}()
-
-	return nil
+	delete(rooms, r.Id)
 }

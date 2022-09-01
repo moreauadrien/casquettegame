@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PlayerInfos } from '@/api';
 
+    export let username: string
 	export let players: PlayerInfos[];
 	export let team: Team;
 
@@ -12,12 +13,11 @@
 	import PlayerTag from '@/components/PlayerTag.svelte';
 
 	import TeamTag from '@/components/TeamTag.svelte';
-	import { username } from '@/stores';
 	import type { Team } from '@/utils';
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">{$username}</p>
+	<p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
 	<p class="mt-20 text-center font-inter font-medium text-4xl">Ton équipe</p>
 
 	<div class="flex justify-center mt-4">

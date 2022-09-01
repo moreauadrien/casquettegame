@@ -1,19 +1,24 @@
 package game
 
-import "timesup/events"
+type TeamColor string
 
 const (
-	BLUE   events.TeamColor = "blue"
-	PURPLE                  = "purple"
+	BLUE   TeamColor = "blue"
+	PURPLE           = "purple"
 )
 
+type TeamPoints struct {
+	Team   TeamColor `json:"team"`
+	Points []int     `json:"points"`
+}
+
 type Team struct {
-	color   events.TeamColor
+	color   TeamColor
 	players []*Player
 	points  []int
 }
 
-func newTeam(color events.TeamColor) Team {
+func newTeam(color TeamColor) Team {
 	return Team{
 		color:   color,
 		players: []*Player{},
@@ -25,7 +30,7 @@ func (t Team) Len() int {
 	return len(t.players)
 }
 
-func (t Team) Color() events.TeamColor {
+func (t Team) Color() TeamColor {
 	return t.color
 }
 

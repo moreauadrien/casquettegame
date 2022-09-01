@@ -5,13 +5,13 @@
 	import CheckIcon from '@/components/icons/CheckIcon.svelte';
 	import CrossIcon from '@/components/icons/CrossIcon.svelte';
 	import TeamTag from '@/components/TeamTag.svelte';
-	import { username } from '@/stores';
 
 	import type { Team } from '@/utils';
 	import { createEventDispatcher } from 'svelte';
 
 	export let cards: string[];
 	export let team: Team;
+    export let username: string
 
 	const dispatch = createEventDispatcher();
 
@@ -27,7 +27,7 @@
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">{$username}</p>
+	<p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
 
 	<div class="flex justify-center mt-2">
 		<TeamTag {team} />

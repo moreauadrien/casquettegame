@@ -1,36 +1,88 @@
 package game
 
 import (
+	"encoding/json"
 	"log"
-	"timesup/events"
-	"timesup/ws"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
+type PlayerCards struct {
+	Selected []string
+	Stock    []string
+}
+
 type Player struct {
-	Id       string
 	Token    string
 	Username string
 	Room     *Room
-	Client   *ws.Client
+	Conn     *websocket.Conn
 	team     *Team
+	Cards    *PlayerCards
 }
 
-func (p *Player) GetInfos() *events.PlayerInfos {
-	return &events.PlayerInfos{
-		Username: p.Username,
-		Id:       p.Id,
-		Team:     p.team.Color(),
+type PlayerInfos struct {
+	Username string    `json:"username"`
+	Team     TeamColor `json:"team"`
+}
+
+func NewPlayer(username string) *Player {
+	p := Player{
+		Token:    uuid.NewString(),
+		Username: username,
 	}
+
+	players[p.Token] = &p
+
+	return &p
 }
 
 func (p *Player) SetTeam(t *Team) {
 	p.team = t
 }
 
-func (p *Player) SendEvent(eventType string, eventData events.EventData, handler ws.ResponseHandler) {
-	err := p.Client.SendEvent(eventType, eventData, handler)
-
-	if err != nil {
-		log.Printf("the event could not be sent to %v: %v", p.Username, err.Error())
+func (p *Player) Infos() *PlayerInfos {
+	if p == nil {
+		return nil
 	}
+
+	return &PlayerInfos{
+		Username: p.Username,
+		Team:     p.team.Color(),
+	}
+}
+
+func (p Player) SendMessage(data gin.H) {
+	msg, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("failed to marshal data %+v", data)
+		return
+	}
+
+	if err := p.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+		log.Printf("the message \"%v\" could not be sent", string(msg))
+	}
+}
+
+func (p Player) IsHost() bool {
+	return p.Room.host.Token == p.Token
+}
+
+func (p Player) IsSpeaker() bool {
+	return p.Room.speaker.Token == p.Token
+}
+
+func (p Player) SendFullState() {
+	data := p.Room.GetFullRoomState()
+	data["team"] = p.team.Color()
+	data["username"] = p.Username
+
+	p.SendMessage(data)
+}
+
+func (p Player) SendCardsToSelect() {
+	data := gin.H{"state": CardSelection, "cards": p.Cards.Selected, "swapsRemaining": len(p.Cards.Stock)}
+	p.SendMessage(data)
 }

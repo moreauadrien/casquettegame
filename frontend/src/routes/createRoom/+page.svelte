@@ -1,30 +1,24 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-
-	import { token, username, playerId } from '@/stores';
 	import UsernameSelect from '@/views/UsernameSelect.svelte';
-	import { game } from '@/game';
 
-	async function createRoom() {
-		try {
-			await game.connect({
-				id: $playerId,
-				token: $token,
-				username: $username,
-			});
+	import { createRoom } from '@/api';
 
-            const roomId = await game.createRoom()
+    let error = ''
+
+	async function handleSubmit(e: CustomEvent<string>) {
+        const result = await createRoom(e.detail)
+
+        if (result.err) {
+            error = result.val.message
+        } else {
+            const roomId = result.val.roomId
+
             goto(`/room/${roomId}`)
-		} catch (e) {
-			console.error(e);
-		}
+        }
 	}
 </script>
 
-<UsernameSelect
-	on:submit={(e) => {
-		username.set(e.detail);
-		createRoom();
-	}}
-	title="Nouvelle partie"
-/>
+<p>{error}</p>
+
+<UsernameSelect on:submit={handleSubmit} title="Nouvelle partie" />

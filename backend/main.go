@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"timesup/game"
-	"timesup/ws"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -21,6 +20,8 @@ func main() {
 	})
 	log.SetOutput(wrt)
 
+	gin.DefaultWriter = wrt
+
 	router := gin.Default()
 	router.Static("/_app", "./static/_app")
 	router.StaticFile("/", "./static/app.html")
@@ -31,11 +32,13 @@ func main() {
 		c.File("./static/app.html")
 	})
 
-	wrapper := ws.NewWrapper()
+	router.GET("/ws", game.WsHandler)
 
-	router.GET("/ws", gin.WrapF(wrapper.HttpHandler))
-
-	game.InitWsHandlers(wrapper)
+	api := router.Group("/api")
+	{
+		api.POST("createRoom", game.CreateRoomHandler)
+		api.POST("joinRoom", game.JoinRoomHandler)
+	}
 
 	router.Run(":8080")
 }
