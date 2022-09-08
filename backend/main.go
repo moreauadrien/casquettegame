@@ -40,5 +40,9 @@ func main() {
 		api.POST("joinRoom", game.JoinRoomHandler)
 	}
 
-	router.Run(":8080")
+	if gin.Mode() == gin.ReleaseMode {
+		router.Run(":8080", "/tls/cert.pem", "/tls/privkey.pem")
+	} else {
+		router.Run(":8080")
+	}
 }

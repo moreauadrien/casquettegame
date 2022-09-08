@@ -8,6 +8,8 @@ COPY ./build/static ./static
 COPY ./build/server ./server
 COPY ./build/cards.txt ./cards.txt
 
+ENV PRODUCTION=true
+
 EXPOSE 8080
 
 CMD ./server

@@ -145,7 +145,6 @@ func (r *Room) SetState(state GameState) {
 		r.Brodcast(data)
 
 	case WaitTurnStart:
-		data["round"] = r.round
 		data["speaker"] = r.speaker.Infos()
 		data["cards"] = []string{}
 		r.Brodcast(data)

@@ -1,12 +1,15 @@
 package game
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"math/rand"
-	"os"
-	"strings"
+	"net/http"
 	"time"
 )
+
+const CARDS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=Fdmim0ahaaoOjJKaC74kd6_ppoZ5LDz0HQTwUhDz0giH_RKjcgRyPeDjjjVPtUS2n5qDXZMEryIZL1VUetwR5TsAAROVKwjVm5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnBL-dAlGgeIZ75H5Pms4W62ohJPG--jcPg7L6-2oFjRuzaq65dtRcYNu8xE0DBVJ8VRl2K84sev7s2fATib-Q5hKrn06dr3l4tz9Jw9Md8uu&lib=M9tnSDrrzYcjWybo1Fb5bWJ_5mhSAKkDo"
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -16,19 +19,31 @@ func init() {
 var cards []string
 
 func getCardsList() ([]string, error) {
-	data, err := os.ReadFile("cards.txt")
+	resp, err := http.Get(CARDS_URL)
 	if err != nil {
 		return nil, err
 	}
 
-	list := strings.Split(string(data), "\n")
+	defer resp.Body.Close()
 
-	return list[:len(list)-1], nil
+	data, err := io.ReadAll(resp.Body)
+
+	list := []string{}
+
+	err = json.Unmarshal(data, &list)
+	if err != nil {
+		return nil, err
+	}
+
+	list = list[0:len(list):len(list)]
+
+	return list, nil
 }
 
 func periodicallyLoadCards() {
 	for {
 		l, err := getCardsList()
+
 		if err != nil {
 			if cards == nil {
 				panic(err)

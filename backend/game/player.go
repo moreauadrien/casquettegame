@@ -76,6 +76,30 @@ func (p Player) IsSpeaker() bool {
 
 func (p Player) SendFullState() {
 	data := p.Room.GetFullRoomState()
+
+	switch p.Room.state {
+	case CardSelection:
+		if p.Cards == nil {
+			data["state"] = "waitPlayers"
+		} else {
+			data["cards"] = p.Cards.Selected
+			data["swapsRemaining"] = len(p.Cards.Stock)
+		}
+
+	case Turn:
+		if p.IsSpeaker() {
+			data["cards"] = p.Room.remainingCards
+		} else {
+			data["cards"] = p.Room.turnGuessedCards
+		}
+
+	case TurnRecap:
+		data["cards"] = p.Room.turnGuessedCards
+
+	case ScoreRecap:
+		data["score"] = p.Room.Score()
+	}
+
 	data["team"] = p.team.Color()
 	data["username"] = p.Username
 
