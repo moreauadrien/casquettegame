@@ -22,7 +22,7 @@
 		<UsernameInput bind:value={username} placeholder="Maaaarc" />
 	</div>
 
-	<div class="flex justify-center absolute bottom-28 w-full">
-		<Button on:click={handleClick} className="px-8 py-4">Next</Button>
+	<div class="flex justify-center absolute bottom-14 w-full">
+		<Button on:click={handleClick} className="px-6 py-3">Next</Button>
 	</div>
 </div>

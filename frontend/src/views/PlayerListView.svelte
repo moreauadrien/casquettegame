@@ -29,7 +29,7 @@
 <div class="flex flex-col justify-center">
 	<p class="mt-14 text-center font-inter font-medium text-2xl">Nouvelle partie</p>
 
-	<p class="mt-20 text-center font-inter font-medium text-4xl">Liste des<br />joueurs</p>
+	<p class="mt-20 short:mt-12 text-center font-inter font-medium text-4xl">Liste des<br />joueurs</p>
 
 	<div class="flex flex-col items-center mt-8">
 		{#each players as player}
@@ -38,7 +38,7 @@
 	</div>
 
 	{#if isHost}
-		<div class="flex justify-center absolute bottom-28 w-full">
+		<div class="flex justify-center absolute bottom-12 w-full">
 			<Button on:click={startGame} className="font-semibold">Here we go !</Button>
 		</div>
 	{/if}

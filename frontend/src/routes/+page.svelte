@@ -4,6 +4,6 @@
 
 </script>
 
-<div class="flex justify-center mt-52">
+<div class="flex justify-center absolute bottom-28 w-full">
 	<Button on:click={() => goto('createRoom')}>Créer une partie</Button>
 </div>

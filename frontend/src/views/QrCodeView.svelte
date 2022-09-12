@@ -22,7 +22,7 @@
         <QrCode data={url} class="w-64 short:w-48"/>
 	</div>
 
-	<div class="flex justify-center w-full">
-		<Button on:click={handleClick} className="px-6 py-2">Next</Button>
+	<div class="flex justify-center absolute bottom-14 w-full">
+		<Button on:click={handleClick} className="px-6 py-3">Next</Button>
 	</div>
 </div>

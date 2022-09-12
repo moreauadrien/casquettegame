@@ -6,6 +6,9 @@ module.exports = {
 			fontFamily: {
 				inter: ['Inter', 'sans-serif'],
 			},
+			screens: {
+				short: { raw: '(max-height: 730px)' },
+			},
 		},
 	},
 	plugins: [],

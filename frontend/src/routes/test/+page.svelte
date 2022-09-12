@@ -1,6 +1,5 @@
 <script>
-import WaitView from "@/views/WaitView.svelte";
-
+    import WaitView from "@/views/WaitView.svelte";
 </script>
 
 <WaitView username="Adrien" />
