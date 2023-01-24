@@ -11,3 +11,5 @@
 /backend/timesup
 /backend/logs
 /timesup-image.tar
+*.crt
+*.key

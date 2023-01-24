@@ -1,7 +1,7 @@
 import type { Result } from 'ts-results';
 import { Err, Ok } from 'ts-results';
 
-const WEBSOCKET_URL = `ws://${window.location.host}/ws`;
+const WEBSOCKET_URL = `wss://${window.location.host}/ws`;
 
 export type EventHandler = (data: any) => void;
 

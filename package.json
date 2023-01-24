@@ -5,7 +5,7 @@
     "docker-save": "sudo docker save timesup > timesup-image.tar",
     "docker-build": "sudo docker build -t timesup .",
     "clean-build": "rm -rf build && mkdir build",
-    "build-all": "pnpm clean-build && (cd frontend && pnpm build && cp -r ./build ../build/static) && (cd backend && GOOS=linux GOARCH=amd64 GIN_MODE=release CGO_ENABLED=0 go build . && mv timesup ../build/server && cp cards.txt ../build)",
+    "build-all": "pnpm clean-build && (cd frontend && pnpm build && cp -r ./build ../build/static) && (cd backend && GOOS=linux GOARCH=amd64 GIN_MODE=release CGO_ENABLED=0 go build . && mv timesup ../build/server)",
     "all": "pnpm build-all && pnpm docker-build && pnpm docker-save"
   }
 }
