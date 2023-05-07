@@ -36,13 +36,9 @@ func main() {
 
 	api := router.Group("/api")
 	{
-		api.POST("createRoom", game.CreateRoomHandler)
-		api.POST("joinRoom", game.JoinRoomHandler)
+		api.POST("create", game.CreateRoomHandler)
+		api.POST("join", game.JoinRoomHandler)
 	}
 
-	if gin.Mode() == gin.ReleaseMode {
-		router.Run(":8080", "/tls/cert.pem", "/tls/privkey.pem")
-	} else {
-		router.Run(":8080")
-	}
+    router.Run(":8080")
 }

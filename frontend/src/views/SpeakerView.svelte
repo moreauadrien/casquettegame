@@ -27,7 +27,7 @@
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
+	<p class="mt-14 text-center text-2xl">{username}</p>
 
 	<div class="flex justify-center mt-2">
 		<TeamTag {team} />
@@ -43,11 +43,11 @@
 
 	<div class="absolute bottom-8 w-full">
 		<div class="m-4 flex justify-center">
-			<Button className="w-72 py-2" on:click={validateCard}><CheckIcon /></Button>
+			<Button class="w-72 py-2" on:click={validateCard}><CheckIcon /></Button>
 		</div>
 
 		<div class="m-4 flex justify-center">
-			<Button className="w-72 py-2 bg-red-400" on:click={passCard}><CrossIcon /></Button>
+			<Button class="w-72 py-2 bg-red-400" on:click={passCard}><CrossIcon /></Button>
 		</div>
 	</div>
 </div>

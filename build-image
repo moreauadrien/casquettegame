@@ -1,0 +1,21 @@
+#!/bin/bash
+
+rm cg-image.tar
+rm -rf build
+mkdir build
+
+(
+    cd frontend
+    pnpm build
+
+    mv ./build ../build/static
+)
+
+(
+    cd backend
+    GOOS=linux GOARCH=amd64 GIN_MODE=release go build -o server
+    mv ./server ../build
+)
+
+sudo docker build -t casquette-game .
+sudo docker save casquette-game > cg-image.tar

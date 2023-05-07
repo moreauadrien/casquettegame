@@ -21,10 +21,10 @@ import { createEventDispatcher } from 'svelte';
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
-	<p class="mt-3 text-center font-inter font-medium text-4xl">{@html title[round]}</p>
+	<p class="mt-14 text-center text-2xl">{username}</p>
+	<p class="mt-3 text-center text-4xl">{@html title[round]}</p>
 
-	<div class="flex justify-center mt-4 font-inter font-medium">
+	<div class="flex justify-center mt-4">
 		<div class="w-10/12">
 			{#each rules[round] as elem}
                 <p class="mt-2 {elem.gray === true ? "text-gray-500": ""}">{elem.text}</p>
@@ -34,7 +34,7 @@ import { createEventDispatcher } from 'svelte';
 
 	{#if isHost}
 		<div class="flex justify-center absolute bottom-28 w-full">
-			<Button on:click={handleClick} className="font-semibold">Chef, oui chef</Button>
+			<Button on:click={handleClick}>Chef, oui chef</Button>
 		</div>
 	{/if}
 </div>

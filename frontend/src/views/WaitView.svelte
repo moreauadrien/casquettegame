@@ -3,9 +3,9 @@
 </script>
 
 <div class="flex flex-col justify-center">
-	<p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
+	<p class="mt-14 text-center text-2xl">{username}</p>
 
-	<p class="mt-20 text-center font-inter font-medium text-4xl">En attente des autres joueurs</p>
+	<p class="mt-20 text-center text-4xl">En attente des autres joueurs</p>
 
 	<div class="flex justify-center mt-16">
 		<div class="loader" />

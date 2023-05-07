@@ -20,7 +20,7 @@ export async function createRoom(hostUsername: string): Promise<Result<{ roomId:
 	};
 
 	try {
-		const resp = await fetch('/api/createRoom', init);
+		const resp = await fetch('/api/create', init);
 		const json = await resp.json();
 
 		if (json.status !== 'ok') {
@@ -47,7 +47,7 @@ export async function joinRoom(username: string, roomId: string): Promise<Result
 	};
 
 	try {
-		const resp = await fetch('/api/joinRoom', init);
+		const resp = await fetch('/api/join', init);
 		const json = await resp.json();
 
 		if (json.status !== 'ok') {

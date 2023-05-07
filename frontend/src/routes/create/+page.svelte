@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import UsernameSelect from '@/views/UsernameSelect.svelte';
+	import UsernameForm from '@/views/UsernameForm.svelte';
 
 	import { createRoom } from '@/api';
 
@@ -21,4 +21,4 @@
 
 <p>{error}</p>
 
-<UsernameSelect on:submit={handleSubmit} title="Nouvelle partie" />
+<UsernameForm on:submit={handleSubmit} title="Nouvelle partie" />

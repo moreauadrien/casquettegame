@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
     import { joinRoom } from '@/api';
-	import UsernameSelect from '@/views/UsernameSelect.svelte';
+	import UsernameForm from '@/views/UsernameForm.svelte';
 
 	const roomId = $page.params.slug;
 
@@ -21,7 +21,7 @@
 
 <p>{error}</p>
 
-<UsernameSelect
+<UsernameForm
 	on:submit={handleSubmit}
 	title="Rejoins une partie"
 />

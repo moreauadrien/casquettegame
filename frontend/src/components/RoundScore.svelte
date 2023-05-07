@@ -15,6 +15,6 @@
 </script>
 
 <div class="w-72 h-10 flex justify-between items-center rounded-3xl m-1 {teamColors[team]}">
-    <p class="text-base font-regular font-inter mx-8">Manche {round}</p>
-    <p class="text-base font-regular font-inter mx-8">{score}</p>
+    <p class="text-base font-regular mx-8">Manche {round}</p>
+    <p class="text-base font-regular mx-8">{score}</p>
 </div>

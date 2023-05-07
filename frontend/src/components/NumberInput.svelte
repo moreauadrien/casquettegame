@@ -17,19 +17,19 @@
 <div class="flex">
 	<div
 		on:click={decrement}
-		class="w-24 h-24 m-2 bg-teal-100 rounded-3xl flex justify-center items-center font-inter font-medium text-4xl"
+		class="w-24 h-24 m-2 bg-teal-100 rounded-3xl flex justify-center items-center text-4xl"
 		class:text-gray-400={value <= min}
 	>
 		-
 	</div>
 	<div
-		class="w-24 h-24 m-2 bg-teal-50 rounded-3xl flex justify-center items-center font-inter font-medium text-4xl"
+		class="w-24 h-24 m-2 bg-teal-50 rounded-3xl flex justify-center items-center text-4xl"
 	>
 		{value}
 	</div>
 	<div
 		on:click={increment}
-		class="w-24 h-24 m-2 bg-teal-100 rounded-3xl flex justify-center items-center font-inter font-medium text-4xl"
+		class="w-24 h-24 m-2 bg-teal-100 rounded-3xl flex justify-center items-center text-4xl"
 		class:text-gray-400={value >= max}
 	>
 		+

@@ -14,7 +14,7 @@ export type TeamPoints = {
 export function getRoomLink(roomId: string) {
 	const { protocol, host } = window.location;
 
-	return `${protocol}//${host}/joinRoom/${roomId}`;
+	return `${protocol}//${host}/join/${roomId}`;
 }
 
 export function sleep(time: number) {

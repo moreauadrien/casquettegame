@@ -10,6 +10,4 @@
 /build
 /backend/timesup
 /backend/logs
-/timesup-image.tar
-*.crt
-*.key
+/cg-image.tar

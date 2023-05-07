@@ -31,7 +31,7 @@
 		? 'rotated'
 		: ''}"
 >
-	<p class="text-2xl font-medium font-inter">{displayedValue}</p>
+	<p class="text-2xl">{displayedValue}</p>
 </div>
 
 <style>

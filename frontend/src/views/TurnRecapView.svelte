@@ -22,7 +22,7 @@
 
 <div class="flex flex-col justify-center h-full">
 	<div class="h-2/5">
-		<p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
+		<p class="mt-14 text-center text-2xl">{username}</p>
 
 		<div class="flex justify-center mt-2">
 			<TeamTag {team} />
@@ -34,7 +34,7 @@
 			</div>
 		</div>
 
-		<p class="mt-10 text-center font-inter font-medium text-2xl">Cartes validées:</p>
+		<p class="mt-10 text-center text-2xl">Cartes validées:</p>
 	</div>
 
 	<div class="h-3/5 overflow-auto">
@@ -47,7 +47,7 @@
 
 	{#if wasSpeaker}
 		<div class="flex justify-center m-4">
-			<Button on:click={handleClick} className="font-semibold px-16">Next</Button>
+			<Button on:click={handleClick}>Next</Button>
 		</div>
 	{/if}
 </div>

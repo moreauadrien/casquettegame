@@ -27,15 +27,15 @@
 
 <div class="flex flex-col justify-center h-full">
     <div class="h-2/5">
-        <p class="mt-14 text-center font-inter font-medium text-2xl">{username}</p>
+        <p class="mt-14 text-center text-2xl">{username}</p>
 
         {#if swapsRemaining > 0}
-            <p class="mt-8 text-center font-inter font-medium text-4xl">
+            <p class="mt-8 text-center text-4xl">
                 Tu peux encore échanger {swapsRemaining}
                 {plural('carte', swapsRemaining)}
             </p>
         {:else}
-            <p class="mt-8 text-center font-inter font-medium text-4xl">
+            <p class="mt-8 text-center text-4xl">
                 Tu ne peux plus échanger de carte
             </p>
         {/if}
@@ -50,6 +50,6 @@
     </div>
 
     <div class="flex justify-center m-4">
-        <Button on:click={handleValidate} className="font-semibold">Valider</Button>
+        <Button on:click={handleValidate}>Valider</Button>
     </div>
 </div>
